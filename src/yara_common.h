@@ -7,6 +7,12 @@
 #include <yara.h>
 #include <rz_yara.h>
 
+#define RZ_YARA_CFG_TAGS       "yara.tags"
+#define RZ_YARA_CFG_EXTENSIONS "yara.extensions"
+#define RZ_YARA_CFG_DATE_FMT   "yara.date.format"
+#define RZ_YARA_CFG_TIMEOUT    "yara.timeout"
+
+#define DEFAULT_YARA_EXT   ".yar,.yara"
 #define YARA_ERROR(f, ...) RZ_LOG_ERROR("YARA: " f, ##__VA_ARGS__)
 #define YARA_WARN(f, ...)  RZ_LOG_WARN("YARA: " f, ##__VA_ARGS__)
 #define YARA_INFO(f, ...)  RZ_LOG_INFO("YARA: " f, ##__VA_ARGS__)

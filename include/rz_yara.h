@@ -10,6 +10,15 @@
 extern "C" {
 #endif
 
+#define RZ_YARA_FLAG_SPACE        "yara"
+#define RZ_YARA_FLAG_SPACE_STRING RZ_YARA_FLAG_SPACE ".str"
+#define RZ_YARA_FLAG_SPACE_BYTES  RZ_YARA_FLAG_SPACE ".bytes"
+#define RZ_YARA_FLAG_SPACE_ASM    RZ_YARA_FLAG_SPACE ".asm"
+
+#define RZ_YARA_FLAG_PREFIX_STRING RZ_YARA_FLAG_SPACE_STRING "."
+#define RZ_YARA_FLAG_PREFIX_BYTES  RZ_YARA_FLAG_SPACE_BYTES "."
+#define RZ_YARA_FLAG_PREFIX_ASM    RZ_YARA_FLAG_SPACE_ASM "."
+
 typedef HtPP /*<const char*, const char*>*/ RzYaraMeta;
 
 typedef struct YR_RULE RzYaraRule;
@@ -35,7 +44,7 @@ RZ_API RzList /*<char *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *sca
 
 RZ_API RZ_OWN RzYaraMeta *rz_yara_metadata_new();
 RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata);
-RZ_API char *rz_yara_create_rule_from_bytes(const ut8 *buffer, ut32 size, RZ_NULLABLE const char *name, RZ_NULLABLE const char *tags, RZ_NULLABLE RzYaraMeta *metadata);
+RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE RzYaraMeta *metadata, RZ_NONNULL const char *name);
 
 
 #ifdef __cplusplus

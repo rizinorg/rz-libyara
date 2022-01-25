@@ -7,8 +7,6 @@
  * Adds core plugin to rizin to handle yara rules
  */
 
-static HtPP *yara_metadata = NULL;
-
 #undef RZ_API
 #define RZ_API static
 #undef RZ_IPI
@@ -17,6 +15,8 @@ static HtPP *yara_metadata = NULL;
 #define SETDESC(x, y)     rz_config_node_desc(x, y)
 #define SETPREF(x, y, z)  SETDESC(rz_config_set(cfg, x, y), z)
 #define SETPREFI(x, y, z) SETDESC(rz_config_set_i(cfg, x, y), z)
+
+static HtPP *yara_metadata = NULL;
 
 static const RzCmdDescHelp yara_command_grp_help = {
 	.summary = "Rizin custom yara parser and generator of YARA rules.",
@@ -36,10 +36,6 @@ static const RzCmdDescArg yara_command_create_args[] = {
 		.name = "rulename",
 		.type = RZ_CMD_ARG_TYPE_STRING,
 	},
-	{
-		.name = "#bytes",
-		.type = RZ_CMD_ARG_TYPE_NUM,
-	},
 	{ 0 },
 };
 
@@ -57,7 +53,7 @@ static const RzCmdDescArg yara_command_load_args[] = {
 };
 
 static const RzCmdDescHelp yara_command_load_help = {
-	.summary = "Parse a .yar file and applies the rules",
+	.summary = "Parse a .yar/.yara file and applies the rules",
 	.args = yara_command_load_args,
 };
 
@@ -70,7 +66,7 @@ static const RzCmdDescArg yara_command_folder_args[] = {
 };
 
 static const RzCmdDescHelp yara_command_folder_help = {
-	.summary = "Searches for .yar files in a folder recursively and applies the rules",
+	.summary = "Searches for .yar/.yara files in a folder recursively and applies the rules",
 	.args = yara_command_folder_args,
 };
 
@@ -97,6 +93,29 @@ static const RzCmdDescHelp yara_command_metadata_help = {
 	.args = yara_command_metadata_args,
 };
 
+static const RzCmdDescArg yara_command_flag_args[] = {
+	{
+		.name = "add|del|clean|list",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+		.optional = true,
+	},
+	{
+		.name = "#bytes",
+		.type = RZ_CMD_ARG_TYPE_NUM,
+		.optional = true,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_help = {
+	.summary = "Adds/Removes/Lists yara strings used when generating rules.",
+	.args = yara_command_flag_args,
+};
+
 static void yara_command_load_error(bool is_warning, const char *file, int line, const RzYaraRule *rule, const char *message, void *user_data) {
 	if (is_warning) {
 		YARA_WARN("%s:%d: %s\n", file, line, message);
@@ -121,9 +140,9 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 		return RZ_CMD_STATUS_ERROR;
 	}
 
-	timeout_secs = rz_config_get_i(core->config, "yara.timeout");
+	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
 	if (timeout_secs < 1) {
-		YARA_WARN("yara.timeout is set to an invalid number. using 5min timeout.\n");
+		YARA_WARN(RZ_YARA_CFG_TIMEOUT " is set to an invalid number. using 5min timeout.\n");
 		// timeout 5 Mins
 		timeout_secs = 5 * 60;
 	}
@@ -152,13 +171,15 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 }
 
 RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const char **argv) {
-	const char *extension = NULL;
-	char *element;
+	const char *element = NULL;
+	const char *ext = NULL;
 	int dir_depth = 0;
 	ut32 loaded = 0;
 	int timeout_secs = 0;
 	RzList *list = NULL;
+	RzList *extensions = NULL;
 	RzListIter *it = NULL;
+	RzListIter *it2 = NULL;
 	RzYaraRules *rules = NULL;
 	RzYaraScanner *scanner = NULL;
 	RzYaraCompiler *comp = NULL;
@@ -170,45 +191,60 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	}
 
 	dir_depth = rz_config_get_i(core->config, "dir.depth");
-	extension = rz_config_get(core->config, "yara.extension");
-	if (RZ_STR_ISEMPTY(extension)) {
-		extension = ".yar";
+	ext = rz_config_get(core->config, RZ_YARA_CFG_EXTENSIONS);
+	if (RZ_STR_ISEMPTY(ext)) {
+		ext = DEFAULT_YARA_EXT;
 	}
-	timeout_secs = rz_config_get_i(core->config, "yara.timeout");
+	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
 	if (timeout_secs < 1) {
-		YARA_WARN("yara.timeout is set to an invalid number. using 5min timeout.\n");
+		YARA_WARN(RZ_YARA_CFG_TIMEOUT " is set to an invalid number. using 5min timeout.\n");
 		// timeout 5 Mins
 		timeout_secs = 5 * 60;
+	}
+
+	extensions = rz_str_split_duplist(ext, ",", true);
+	if (!extensions) {
+		YARA_ERROR("cannnot allocate extensions list.\n");
+		return RZ_CMD_STATUS_ERROR;
 	}
 
 	rz_strf(path, "%s" RZ_SYS_DIR "**", argv[1]);
 	list = rz_file_globsearch(path, dir_depth);
 	if (rz_list_length(list) < 1) {
-		YARA_ERROR("'%s' directory does not contain any *%s files.\n", argv[1], extension);
+		ext = rz_config_get(core->config, RZ_YARA_CFG_EXTENSIONS);
+		YARA_ERROR("'%s' directory does not contain any %s files.\n", argv[1], ext);
 		rz_list_free(list);
+		rz_list_free(extensions);
 		return RZ_CMD_STATUS_ERROR;
 	}
 
 	if (!(comp = rz_yara_compiler_new(yara_command_load_error, NULL))) {
 		rz_list_free(list);
+		rz_list_free(extensions);
 		return RZ_CMD_STATUS_ERROR;
 	}
 
 	rz_list_foreach (list, it, element) {
-		if (!rz_str_endswith(element, extension)) {
-			continue;
-		} else if (!rz_yara_compiler_parse_file(comp, element)) {
-			rz_yara_compiler_free(comp);
-			rz_list_free(list);
-			return RZ_CMD_STATUS_ERROR;
+		rz_list_foreach (extensions, it2, ext) {
+			if (!rz_str_endswith(element, ext)) {
+				continue;
+			} else if (!rz_yara_compiler_parse_file(comp, element)) {
+				rz_yara_compiler_free(comp);
+				rz_list_free(list);
+				rz_list_free(extensions);
+				return RZ_CMD_STATUS_ERROR;
+			}
+			YARA_INFO("loaded file %s\n", element);
+			loaded++;
+			break;
 		}
-		YARA_INFO("loaded file %s\n", element);
-		loaded++;
 	}
 	rz_list_free(list);
+	rz_list_free(extensions);
 
 	if (loaded < 1) {
-		YARA_ERROR("'%s' directory does not contain any *%s files.\n", argv[1], extension);
+		ext = rz_config_get(core->config, RZ_YARA_CFG_EXTENSIONS);
+		YARA_ERROR("'%s' directory does not contain any %s files.\n", argv[1], ext);
 		rz_yara_compiler_free(comp);
 		return RZ_CMD_STATUS_ERROR;
 	}
@@ -240,25 +276,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 }
 
 RZ_IPI RzCmdStatus yara_command_create_handler(RzCore *core, int argc, const char **argv) {
-	const char *name = argv[1];
-	ut64 n_bytes = rz_get_input_num_value(NULL, argv[2]);
-	if (n_bytes < 1 || n_bytes > 0x1000) {
-		YARA_ERROR("usage: number of bytes is invalid (expected n between 1 and 0x1000)\n");
-		return RZ_CMD_STATUS_WRONG_ARGS;
-	}
-
-	ut32 block_size = core->blocksize;
-	if (n_bytes > block_size) {
-		rz_core_block_size(core, n_bytes);
-	}
-
-	const char *tags = rz_config_get(core->config, "yara.tags");
-	char *rule = rz_yara_create_rule_from_bytes(core->block, n_bytes, name, tags, yara_metadata);
-
-	if (n_bytes > block_size) {
-		rz_core_block_size(core, block_size);
-	}
-
+	char *rule = rz_yara_create_rule_from_bytes(core, yara_metadata, argv[1]);
 	if (!rule) {
 		return RZ_CMD_STATUS_ERROR;
 	}
@@ -266,6 +284,114 @@ RZ_IPI RzCmdStatus yara_command_create_handler(RzCore *core, int argc, const cha
 	rz_cons_printf("%s", rule);
 	free(rule);
 	return RZ_CMD_STATUS_OK;
+}
+
+static bool print_all_strings_stored(RzFlagItem *fi, void *unused) {
+	(void)unused;
+	rz_cons_printf("0x%" PFMT64x " 0x%" PFMT64x " %s\n", fi->offset, fi->size, fi->name);
+	return true;
+}
+
+static bool yara_is_valid_name(const char *name) {
+	int len = strlen(name);
+	if (len < 1) {
+		YARA_ERROR("string name is empty.\n");
+		return false;
+	} else if (len > 128) {
+		YARA_ERROR("string name is too lon (max 128 chars).\n");
+		return false;
+	}
+	for (int i = 0; i < len; ++i) {
+		if (i > 0 && IS_DIGIT(name[i])) {
+			continue;
+		} else if (i > 0 && name[i] == '_') {
+			continue;
+		} else if (IS_UPPER(name[i]) || IS_LOWER(name[i])) {
+			continue;
+		}
+		YARA_ERROR("string name contains an invalid char at %d (%c).\n", i, name[i]);
+		YARA_ERROR("accepted values are only A-Z, a-z, _ and the name must start with a letter\n");
+		return false;
+	}
+	return true;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char **argv) {
+	char flagname[256];
+	if (!strcmp(argv[1], "add")) {
+		if (argc != 4 && argc != 3) {
+			YARA_ERROR("usage: yaras add <string name> <# bytes> @ <address|flag>\n");
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		} else if (!yara_is_valid_name(argv[2])) {
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+		bool is_string = false;
+		bool is_asm = false;
+		ut64 n_bytes = 0;
+		if (argc == 4) {
+			n_bytes = rz_get_input_num_value(NULL, argv[3]);
+		}
+
+		RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
+		if (found) {
+			RzList *tmp = NULL;
+			if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE)) {
+				YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
+				return RZ_CMD_STATUS_ERROR;
+			} else if (rz_str_startswith(found->name, "str.")) {
+				n_bytes = found->size;
+				is_string = true;
+			} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset))) {
+				is_asm = true;
+				rz_list_free(tmp);
+			}
+		}
+
+		if (n_bytes < 1 || n_bytes > 0x1000) {
+			YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+
+		if (is_string) {
+			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_STRING "%s", argv[2]);
+		} else if (is_asm) {
+			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM "%s", argv[2]);
+		} else {
+			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_BYTES "%s", argv[2]);
+		}
+
+		if (rz_flag_get(core->flags, flagname)) {
+			YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+
+		rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE);
+		rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+		rz_flag_space_pop(core->flags);
+		return RZ_CMD_STATUS_OK;
+	} else if (!strcmp(argv[1], "del")) {
+		if (argc != 3) {
+			YARA_ERROR("usage: yaras del <string name>\n");
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+		rz_flag_unset_name(core->flags, argv[2]);
+		return RZ_CMD_STATUS_OK;
+	} else if (!strcmp(argv[1], "list")) {
+		if (argc != 2) {
+			YARA_ERROR("usage: yaras list\n");
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE, (RzFlagItemCb)print_all_strings_stored, NULL);
+		return RZ_CMD_STATUS_OK;
+	} else if (!strcmp(argv[1], "clean")) {
+		if (argc != 2) {
+			YARA_ERROR("usage: yaras clean\n");
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+		rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE);
+		return RZ_CMD_STATUS_OK;
+	}
+	return RZ_CMD_STATUS_WRONG_ARGS;
 }
 
 static bool print_all_metadata_stored(void *unused, const char *k, const char *v) {
@@ -303,22 +429,34 @@ RZ_IPI RzCmdStatus yara_command_metadata_handler(RzCore *core, int argc, const c
 RZ_IPI RzCmdStatus yara_command_main_handler(RzCore *core, int argc, const char **argv) {
 	const char *usage = ""
 			    "commands:\n"
-			    "  yarac <rulename> <#bytes> # to create a new rule\n"
-			    "  yaral <file>              # to load a yara file and apply to the binary\n"
+			    "  yaras add <name> <#bytes> # to create a new yara string\n"
+			    "  yaras del <name>          # to remove a yara string\n"
+			    "  yaras list                # to list all yara strings\n"
+			    "  yaras clean               # to remove all yara string\n"
+			    "  yarac <rulename>          # to create a new rule\n"
 			    "  yarad <directory>         # to loads all yara files and applies to the binary\n"
+			    "  yaral <file>              # to load a yara file and apply to the binary\n"
 			    "  yaram add <key> <value>   # adds a metadata key value (used by yarac)\n"
 			    "  yaram del <key>           # removes a metadata key\n"
 			    "  yaram list <key>          # lists all metadata keys\n"
-			    "\nusage examples:\n"
+			    "\n"
+			    "usage examples:\n"
+			    "  to create a rule\n"
+			    "    yaras add rooted_00 @ str.rooted\n"
+			    "    yaras add shell_code 10 @ fcn.0x123+2\n"
+			    "    yaras add aes_sbox 256 @ 0x1234\n"
+			    "    yaras add mistake 256 @ 0xdeadbeef\n"
+			    "    yaras del mistake\n"
+			    "    yarac bad_malware\n"
+			    "\n"
 			    "  to add metadata when creating a rule\n"
-			    "    yaram add author \"john foo\"\n"
 			    "    yaram add author \"john foo\"\n"
 			    "    yaram add thread_level 3\n"
 			    "    yaram add is_elf true\n"
-			    "    yaram add date \"\" # leave it empty to automatically generate one\n"
-			    "\nto remove a metadata key\n"
+			    "    yaram add date \"\" # if empty, generates one (see also 'el " RZ_YARA_CFG_DATE_FMT "')\n"
+			    "  to remove a metadata key\n"
 			    "    yaram del is_elf\n"
-			    "\nto list all the metadata key/values\n"
+			    "  to list all the metadata key/values\n"
 			    "    yaram list";
 
 	rz_cons_println(usage);
@@ -341,9 +479,10 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 	}
 
 	rz_config_lock(cfg, false);
-	SETPREF("yara.tags", "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
-	SETPREF("yara.extension", ".yar", "yara file extension (default .yar).");
-	SETPREFI("yara.timeout", 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
+	SETPREF(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
+	SETPREF(RZ_YARA_CFG_EXTENSIONS, DEFAULT_YARA_EXT, "yara file extensions, comma separated (default " DEFAULT_YARA_EXT ").");
+	SETPREF(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d %H:%M:%S", "yara metadata date format (uses strftime for formatting).");
+	SETPREFI(RZ_YARA_CFG_TIMEOUT, 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
 	rz_config_lock(cfg, true);
 
 	RzCmdDesc *yara_cd = rz_cmd_desc_group_new(rcmd, root_cd, "yara", yara_command_main_handler, &yara_command_main_help, &yara_command_grp_help);
@@ -360,6 +499,9 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 
 	RzCmdDesc *yara_metadata_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaram", yara_command_metadata_handler, &yara_command_metadata_help);
 	rz_return_val_if_fail(yara_metadata_cd, false);
+
+	RzCmdDesc *yara_flag_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaras", yara_command_flag_handler, &yara_command_flag_help);
+	rz_return_val_if_fail(yara_flag_cd, false);
 
 	if (yr_initialize() != ERROR_SUCCESS) {
 		rz_warn_if_reached();
