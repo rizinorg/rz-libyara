@@ -316,59 +316,64 @@ static bool yara_is_valid_name(const char *name) {
 	return true;
 }
 
-RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char **argv) {
+static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name, ut64 n_bytes) {
 	char flagname[256];
+	if (!yara_is_valid_name(name)) {
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+	bool is_string = false;
+	bool is_asm = false;
+
+	RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
+	if (found) {
+		RzList *tmp = NULL;
+		if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE)) {
+			YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
+			return RZ_CMD_STATUS_ERROR;
+		} else if (rz_str_startswith(found->name, "str.")) {
+			n_bytes = found->size;
+			is_string = true;
+		} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset)) && rz_list_length(tmp) > 0) {
+			is_asm = true;
+		}
+		rz_list_free(tmp);
+	}
+
+	if (n_bytes < 1 || n_bytes > 0x1000) {
+		YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	if (is_string) {
+		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_STRING "%s", name);
+	} else if (is_asm) {
+		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM "%s", name);
+	} else {
+		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_BYTES "%s", name);
+	}
+
+	if (rz_flag_get(core->flags, flagname)) {
+		YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE);
+	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+	rz_flag_space_pop(core->flags);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char **argv) {
 	if (!strcmp(argv[1], "add")) {
 		if (argc != 4 && argc != 3) {
 			YARA_ERROR("usage: yaras add <string name> <# bytes> @ <address|flag>\n");
 			return RZ_CMD_STATUS_WRONG_ARGS;
-		} else if (!yara_is_valid_name(argv[2])) {
-			return RZ_CMD_STATUS_WRONG_ARGS;
 		}
-		bool is_string = false;
-		bool is_asm = false;
 		ut64 n_bytes = 0;
 		if (argc == 4) {
 			n_bytes = rz_get_input_num_value(NULL, argv[3]);
 		}
-
-		RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
-		if (found) {
-			RzList *tmp = NULL;
-			if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE)) {
-				YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
-				return RZ_CMD_STATUS_ERROR;
-			} else if (rz_str_startswith(found->name, "str.")) {
-				n_bytes = found->size;
-				is_string = true;
-			} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset)) && rz_list_length(tmp) > 0) {
-				is_asm = true;
-			}
-			rz_list_free(tmp);
-		}
-
-		if (n_bytes < 1 || n_bytes > 0x1000) {
-			YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-
-		if (is_string) {
-			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_STRING "%s", argv[2]);
-		} else if (is_asm) {
-			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM "%s", argv[2]);
-		} else {
-			rz_strf(flagname, RZ_YARA_FLAG_PREFIX_BYTES "%s", argv[2]);
-		}
-
-		if (rz_flag_get(core->flags, flagname)) {
-			YARA_ERROR("yara string, named '%s', already exists\n", flagname);
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-
-		rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE);
-		rz_flag_set(core->flags, flagname, core->offset, n_bytes);
-		rz_flag_space_pop(core->flags);
-		return RZ_CMD_STATUS_OK;
+		return yara_command_flag_add_handler(core, argv[2], n_bytes);
 	} else if (!strcmp(argv[1], "del")) {
 		if (argc != 3) {
 			YARA_ERROR("usage: yaras del <string name>\n");
