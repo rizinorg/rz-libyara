@@ -14,7 +14,7 @@
  *     meta:
  *         author = "john foo"
  *         project = "the foo project"
- *         creation_date = "Mon Jan 24 12:56:21 2022 UTC+1"
+ *         date = "Mon Jan 24 12:56:21 2022 UTC+1"
  *
  *     strings:
  *         $chunk_0 = {
@@ -24,7 +24,7 @@
  *         }
  *
  *     condition:
- *         $chunk_0
+ *         all of them
  * }
  */
 
