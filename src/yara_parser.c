@@ -85,15 +85,19 @@ RZ_API bool rz_yara_compiler_parse_file(RZ_NONNULL RzYaraCompiler *compiler, RZ_
 	return ret;
 }
 
-RZ_API RZ_OWN RzYaraScanner *rz_yara_scanner_new(RZ_NONNULL RzYaraRules *rules, int timeout_secs) {
+RZ_API RZ_OWN RzYaraScanner *rz_yara_scanner_new(RZ_NONNULL RzYaraRules *rules, int timeout_secs, bool fast_mode) {
 	rz_return_val_if_fail(rules, NULL);
 	YR_SCANNER *scanner = NULL;
 	if (yr_scanner_create(rules, &scanner) != ERROR_SUCCESS) {
 		YARA_ERROR("Cannot allocate yara scanner\n");
 		return NULL;
 	}
+	int flags = SCAN_FLAGS_REPORT_RULES_MATCHING;
+	if (fast_mode) {
+		flags |= SCAN_FLAGS_FAST_MODE;
+	}
 	yr_scanner_set_timeout(scanner, timeout_secs);
-	yr_scanner_set_flags(scanner, SCAN_FLAGS_FAST_MODE | SCAN_FLAGS_REPORT_RULES_MATCHING);
+	yr_scanner_set_flags(scanner, flags);
 	return scanner;
 }
 
@@ -104,14 +108,46 @@ RZ_API void rz_yara_scanner_free(RZ_NULLABLE RzYaraScanner *scanner) {
 	yr_scanner_destroy(scanner);
 }
 
+static void yara_match_free(RzYaraMatch *ym) {
+	if (!ym) {
+		return;
+	}
+	free(ym->rule);
+	free(ym);
+}
+
+static RzYaraMatch *yara_match_new(YR_RULE *rule, YR_STRING *string, YR_MATCH *match) {
+	RzYaraMatch *ym = RZ_NEW0(RzYaraMatch);
+	if (!ym) {
+		return NULL;
+	}
+	ym->offset = match->base + match->offset;
+	ym->size = match->match_length;
+	ym->string = strdup(string->identifier);
+	ym->rule = strdup(rule->identifier);
+	if (!ym->rule || !ym->string) {
+		yara_match_free(ym);
+		return NULL;
+	}
+	return ym;
+}
+
 static int yara_scanner_add_match_to_list(YR_SCAN_CONTEXT *context, int msg_type, void *data, void *cb_data) {
+	YR_MATCH *match;
+	YR_STRING *string;
+	YR_RULE *rule;
+	RzYaraMatch *ym;
+	RzList *matches = (RzList *)cb_data;
 	if (msg_type == CALLBACK_MSG_RULE_MATCHING) {
-		RzList *matches = (RzList *)cb_data;
-		YR_RULE *rule = (YR_RULE *)data;
-		char *identifier = strdup(rule->identifier);
-		if (!identifier || !rz_list_append(matches, identifier)) {
-			free(identifier);
-			return CALLBACK_ABORT;
+		rule = (YR_RULE *)data;
+		yr_rule_strings_foreach(rule, string) {
+			yr_string_matches_foreach(context, string, match) {
+				ym = yara_match_new(rule, string, match);
+				if (!ym || !rz_list_append(matches, ym)) {
+					yara_match_free(ym);
+					return CALLBACK_ABORT;
+				}
+			}
 		}
 	}
 	return CALLBACK_CONTINUE;
@@ -145,11 +181,11 @@ static const uint8_t *yara_rz_io_fetch_block(YR_MEMORY_BLOCK *block) {
 	return yio->buffer + block->base;
 }
 
-RZ_API RzList /*<char *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *scanner, RZ_NONNULL RzCore *core) {
+RZ_API RzList /*<RzYaraMatch *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *scanner, RZ_NONNULL RzCore *core) {
 	rz_return_val_if_fail(scanner && core, NULL);
 	YR_MEMORY_BLOCK_ITERATOR it = { 0 };
 	YaraRzIO yio = { 0 };
-	RzList *matches = rz_list_newf(free);
+	RzList *matches = rz_list_newf((RzListFree)yara_match_free);
 	if (!matches) {
 		YARA_ERROR("Cannot allocate yara matches list\n");
 		return NULL;

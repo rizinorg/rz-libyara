@@ -13,8 +13,9 @@
 #define RZ_IPI static
 
 #define SETDESC(x, y)     rz_config_node_desc(x, y)
-#define SETPREF(x, y, z)  SETDESC(rz_config_set(cfg, x, y), z)
+#define SETPREFS(x, y, z) SETDESC(rz_config_set(cfg, x, y), z)
 #define SETPREFI(x, y, z) SETDESC(rz_config_set_i(cfg, x, y), z)
+#define SETPREFB(x, y, z) SETDESC(rz_config_set_b(cfg, x, y), z)
 
 static HtPP *yara_metadata = NULL;
 
@@ -125,13 +126,14 @@ static void yara_command_load_error(bool is_warning, const char *file, int line,
 }
 
 RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char **argv) {
-	char *identifier;
+	RzYaraMatch *ym = NULL;
 	int timeout_secs = 0;
 	RzList *matches = NULL;
 	RzListIter *it = NULL;
 	RzYaraRules *rules = NULL;
 	RzYaraScanner *scanner = NULL;
 	RzYaraCompiler *comp = NULL;
+	bool fast_mode = false;
 
 	comp = rz_yara_compiler_new(yara_command_load_error, NULL);
 	if (!comp || !rz_yara_compiler_parse_file(comp, argv[1])) {
@@ -140,6 +142,7 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 		return RZ_CMD_STATUS_ERROR;
 	}
 
+	fast_mode = rz_config_get_b(core->config, RZ_YARA_CFG_FASTMODE);
 	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
 	if (timeout_secs < 1) {
 		YARA_WARN(RZ_YARA_CFG_TIMEOUT " is set to an invalid number. using 5min timeout.\n");
@@ -147,7 +150,7 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 		timeout_secs = 5 * 60;
 	}
 	rules = rz_yara_compiler_get_rules_and_free(comp);
-	scanner = rz_yara_scanner_new(rules, timeout_secs);
+	scanner = rz_yara_scanner_new(rules, timeout_secs, fast_mode);
 	if (!scanner) {
 		rz_warn_if_reached();
 		rz_yara_rules_free(rules);
@@ -161,8 +164,8 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 	if (matches && rz_list_length(matches) < 1) {
 		rz_cons_printf("no matches\n");
 	} else {
-		rz_list_foreach (matches, it, identifier) {
-			rz_cons_printf("matches %s\n", identifier);
+		rz_list_foreach (matches, it, ym) {
+			rz_cons_printf("0x%" PFMT64x " 0x%x %s %s\n", ym->offset, ym->size, ym->string, ym->rule);
 		}
 	}
 	rz_list_free(matches);
@@ -171,6 +174,7 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 }
 
 RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const char **argv) {
+	RzYaraMatch *ym = NULL;
 	const char *element = NULL;
 	const char *ext = NULL;
 	int dir_depth = 0;
@@ -183,6 +187,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	RzYaraRules *rules = NULL;
 	RzYaraScanner *scanner = NULL;
 	RzYaraCompiler *comp = NULL;
+	bool fast_mode = false;
 	char path[1024];
 
 	if (!rz_file_is_directory(argv[1])) {
@@ -195,6 +200,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	if (RZ_STR_ISEMPTY(ext)) {
 		ext = DEFAULT_YARA_EXT;
 	}
+	fast_mode = rz_config_get_b(core->config, RZ_YARA_CFG_FASTMODE);
 	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
 	if (timeout_secs < 1) {
 		YARA_WARN(RZ_YARA_CFG_TIMEOUT " is set to an invalid number. using 5min timeout.\n");
@@ -250,7 +256,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	}
 
 	rules = rz_yara_compiler_get_rules_and_free(comp);
-	scanner = rz_yara_scanner_new(rules, timeout_secs);
+	scanner = rz_yara_scanner_new(rules, timeout_secs, fast_mode);
 	if (!scanner) {
 		rz_warn_if_reached();
 		rz_yara_rules_free(rules);
@@ -263,10 +269,10 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 
 	if (list) {
 		if (rz_list_length(list) < 1) {
-			rz_cons_printf("no yara rules matches\n");
+			rz_cons_printf("no matches\n");
 		} else {
-			rz_list_foreach (list, it, element) {
-				rz_cons_printf("matches yara rule %s\n", element);
+			rz_list_foreach (list, it, ym) {
+				rz_cons_printf("0x%" PFMT64x " 0x%x %s %s\n", ym->offset, ym->size, ym->string, ym->rule);
 			}
 		}
 	}
@@ -484,10 +490,11 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 	}
 
 	rz_config_lock(cfg, false);
-	SETPREF(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
-	SETPREF(RZ_YARA_CFG_EXTENSIONS, DEFAULT_YARA_EXT, "yara file extensions, comma separated (default " DEFAULT_YARA_EXT ").");
-	SETPREF(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d", "yara metadata date format (uses strftime for formatting).");
+	SETPREFS(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
+	SETPREFS(RZ_YARA_CFG_EXTENSIONS, DEFAULT_YARA_EXT, "yara file extensions, comma separated (default " DEFAULT_YARA_EXT ").");
+	SETPREFS(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d", "yara metadata date format (uses strftime for formatting).");
 	SETPREFI(RZ_YARA_CFG_TIMEOUT, 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
+	SETPREFB(RZ_YARA_CFG_FASTMODE, false, "yara scanner fast mode, skips multiple matches (default: false).");
 	rz_config_lock(cfg, true);
 
 	RzCmdDesc *yara_cd = rz_cmd_desc_group_new(rcmd, root_cd, "yara", yara_command_main_handler, &yara_command_main_help, &yara_command_grp_help);

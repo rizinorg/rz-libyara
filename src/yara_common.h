@@ -11,6 +11,7 @@
 #define RZ_YARA_CFG_EXTENSIONS "yara.extensions"
 #define RZ_YARA_CFG_DATE_FMT   "yara.date.format"
 #define RZ_YARA_CFG_TIMEOUT    "yara.timeout"
+#define RZ_YARA_CFG_FASTMODE   "yara.fastmode"
 
 #define DEFAULT_YARA_EXT   ".yar,.yara"
 #define YARA_ERROR(f, ...) RZ_LOG_ERROR("YARA: " f, ##__VA_ARGS__)

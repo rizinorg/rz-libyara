@@ -20,6 +20,12 @@ extern "C" {
 #define RZ_YARA_FLAG_PREFIX_ASM    RZ_YARA_FLAG_SPACE_ASM "."
 
 typedef HtPP /*<const char*, const char*>*/ RzYaraMeta;
+typedef struct rz_yara_match_t {
+    char *rule;
+    char *string;
+    ut64 offset;
+    ut32 size;
+} RzYaraMatch;
 
 typedef struct YR_RULE RzYaraRule;
 typedef struct YR_RULES RzYaraRules;
@@ -38,9 +44,9 @@ RZ_API bool rz_yara_compiler_parse_file(RZ_NONNULL RzYaraCompiler *compiler, RZ_
 RZ_API void rz_yara_compiler_free(RZ_NULLABLE RzYaraCompiler *compiler);
 RZ_API RZ_OWN RzYaraRules *rz_yara_compiler_get_rules_and_free(RZ_NONNULL RzYaraCompiler *compiler);
 
-RZ_API RZ_OWN RzYaraScanner *rz_yara_scanner_new(RZ_NONNULL RzYaraRules *rules, int timeout_secs);
+RZ_API RZ_OWN RzYaraScanner *rz_yara_scanner_new(RZ_NONNULL RzYaraRules *rules, int timeout_secs, bool fast_mode);
 RZ_API void rz_yara_scanner_free(RZ_NULLABLE RzYaraScanner *scanner);
-RZ_API RzList /*<char *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *scanner, RZ_NONNULL RzCore *core);
+RZ_API RzList /*<RzYaraMatch *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *scanner, RZ_NONNULL RzCore *core);
 
 RZ_API RZ_OWN RzYaraMeta *rz_yara_metadata_new();
 RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata);
