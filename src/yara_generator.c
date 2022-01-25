@@ -118,6 +118,7 @@ static bool flag_foreach_add_bytes(RzFlagItem *fi, YaraCbData *cd) {
 
 static bool flag_foreach_add_asm(RzFlagItem *fi, YaraCbData *cd) {
 	ut8 buffer[0x1000];
+	RzAsmOp asmop;
 	ut8 *mask = NULL;
 	const char *name = fi->name + strlen(RZ_YARA_FLAG_PREFIX_ASM);
 	if (RZ_STR_ISEMPTY(name)) {
@@ -141,6 +142,18 @@ static bool flag_foreach_add_asm(RzFlagItem *fi, YaraCbData *cd) {
 	}
 
 	rz_strbuf_appendf(cd->sb, "\t\t// offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
+
+	for (int i = 0; i < read;) {
+		rz_asm_op_init(&asmop);
+		int opsize = rz_asm_disassemble(cd->core->rasm, &asmop, &buffer[i], read - i);
+		if (opsize < 1) {
+			break;
+		}
+		i += opsize;
+		rz_strbuf_appendf(cd->sb, "\t\t// %s\n", rz_strbuf_get(&asmop.buf_asm));
+		rz_asm_op_fini(&asmop);
+	}
+
 	rz_strbuf_appendf(cd->sb, "\t\t$%s = {\n\t\t\t", name);
 	for (int i = 0; i < read; ++i) {
 		if (i > 0 && !(i & 7)) {

@@ -341,10 +341,10 @@ RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char 
 			} else if (rz_str_startswith(found->name, "str.")) {
 				n_bytes = found->size;
 				is_string = true;
-			} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset))) {
+			} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset)) && rz_list_length(tmp) > 0) {
 				is_asm = true;
-				rz_list_free(tmp);
 			}
+			rz_list_free(tmp);
 		}
 
 		if (n_bytes < 1 || n_bytes > 0x1000) {
@@ -481,7 +481,7 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 	rz_config_lock(cfg, false);
 	SETPREF(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
 	SETPREF(RZ_YARA_CFG_EXTENSIONS, DEFAULT_YARA_EXT, "yara file extensions, comma separated (default " DEFAULT_YARA_EXT ").");
-	SETPREF(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d %H:%M:%S", "yara metadata date format (uses strftime for formatting).");
+	SETPREF(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d", "yara metadata date format (uses strftime for formatting).");
 	SETPREFI(RZ_YARA_CFG_TIMEOUT, 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
 	rz_config_lock(cfg, true);
 
