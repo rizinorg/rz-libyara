@@ -56,51 +56,60 @@ static inline bool is_hash(const char *key) {
 		!rz_str_casecmp(key, "entropy");
 }
 
+static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
+	ut64 limit = rz_config_get_i(cd->core->config, "bin.hashlimit");
+	RzBinFile *bf = rz_bin_cur(cd->core->bin);
+	if (!bf) {
+		YARA_WARN("cannot get current opened binary.\n");
+		return;
+	}
+	const char *algo = key;
+	if (!rz_str_casecmp(algo, "sha2")) {
+		algo = "sha256";
+	}
+
+	RzList *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
+	RzBinFileHash *h = NULL;
+	RzListIter *it = NULL;
+	rz_list_foreach (hashes, it, h) {
+		if (rz_str_casecmp(algo, h->type)) {
+			continue;
+		}
+		if (!strncmp(h->type, "entropy", strlen("entropy"))) {
+			// entropy and entropy_fract are floats
+			rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", key, h->hex);
+		} else {
+			rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", key, h->hex);
+		}
+		break;
+	}
+	rz_list_free(hashes);
+}
+
 static inline bool is_date_timestamp(const char *key) {
 	return !strcmp(key, "date") || !strcmp(key, "timestamp");
+}
+
+static inline void add_metadata_timestamp(YaraCbData *cd, const char *key) {
+	const char *fmt = rz_config_get(cd->core->config, RZ_YARA_CFG_DATE_FMT);
+	if (RZ_STR_ISEMPTY(fmt)) {
+		YARA_WARN("date format is invalid.\n");
+		return;
+	}
+	char buffer[0x100];
+	time_t timer = time(NULL);
+	struct tm *tm_info = localtime(&timer);
+	strftime(buffer, sizeof(buffer), fmt, tm_info);
+	rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", key, buffer);
 }
 
 static bool add_metadata(YaraCbData *cd, const char *k, const char *v) {
 	if (!strcmp(v, "true") || !strcmp(v, "false") || rz_is_valid_input_num_value(NULL, v)) {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", k, v);
 	} else if (RZ_STR_ISEMPTY(v) && is_date_timestamp(k)) {
-		char buffer[0x100];
-		const char *fmt = rz_config_get(cd->core->config, RZ_YARA_CFG_DATE_FMT);
-		if (RZ_STR_ISEMPTY(fmt)) {
-			YARA_WARN("date format is invalid.\n");
-		} else {
-			time_t timer = time(NULL);
-			struct tm *tm_info = localtime(&timer);
-			strftime(buffer, sizeof(buffer), fmt, tm_info);
-			rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, buffer);
-		}
+		add_metadata_timestamp(cd, k);
 	} else if (RZ_STR_ISEMPTY(v) && is_hash(k)) {
-		ut64 limit = rz_config_get_i(cd->core->config, "bin.hashlimit");
-		RzBinFile *bf = rz_bin_cur(cd->core->bin);
-		if (!bf) {
-			YARA_WARN("cannot get current opened binary.\n");
-		} else {
-			const char *algo = k;
-			if (!rz_str_casecmp(algo, "sha2")) {
-				algo = "sha256";
-			}
-			RzList *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
-			RzBinFileHash *h = NULL;
-			RzListIter *it = NULL;
-			rz_list_foreach (hashes, it, h) {
-				if (rz_str_casecmp(algo, h->type)) {
-					continue;
-				}
-				if (!strncmp(h->type, "entropy", strlen("entropy"))) {
-					// entropy and entropy_fract are floats
-					rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", k, h->hex);
-				} else {
-					rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, h->hex);
-				}
-				break;
-			}
-			rz_list_free(hashes);
-		}
+		add_metadata_file_hash(cd, k);
 	} else {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, v);
 	}
@@ -122,7 +131,7 @@ static bool flag_foreach_add_string(RzFlagItem *fi, YaraCbData *cd) {
 	}
 	buffer[RZ_MIN(fi->size, sizeof(buffer) - 1)] = 0;
 
-	rz_strbuf_appendf(cd->sb, "\t\t// offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
+	rz_strbuf_appendf(cd->sb, "\t\t// string offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
 
 	char *ek = rz_str_escape_utf8_for_json((char *)buffer, -1);
 	rz_strbuf_appendf(cd->sb, "\t\t$%s = \"%s\"\n\n", name, ek);
@@ -144,7 +153,7 @@ static bool flag_foreach_add_bytes(RzFlagItem *fi, YaraCbData *cd) {
 		YARA_WARN("cannot read yara string %s (skipping)\n", fi->name);
 		return true;
 	}
-	rz_strbuf_appendf(cd->sb, "\t\t// offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
+	rz_strbuf_appendf(cd->sb, "\t\t// bytes offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
 	rz_strbuf_appendf(cd->sb, "\t\t$%s = {\n\t\t\t", name);
 	for (int i = 0; i < read; ++i) {
 		if (i > 0 && !(i & 7)) {
@@ -156,11 +165,12 @@ static bool flag_foreach_add_bytes(RzFlagItem *fi, YaraCbData *cd) {
 	return true;
 }
 
-static bool flag_foreach_add_asm(RzFlagItem *fi, YaraCbData *cd) {
+static bool flag_foreach_add_masked_asm(RzFlagItem *fi, YaraCbData *cd) {
+	int pos = 0;
 	ut8 buffer[0x1000];
 	RzAsmOp asmop;
 	ut8 *mask = NULL;
-	const char *name = fi->name + strlen(RZ_YARA_FLAG_PREFIX_ASM);
+	const char *name = fi->name + strlen(RZ_YARA_FLAG_PREFIX_ASM_M);
 	if (RZ_STR_ISEMPTY(name)) {
 		YARA_WARN("invalid flag name: %s (skipping)\n", fi->name);
 		return true;
@@ -181,32 +191,95 @@ static bool flag_foreach_add_asm(RzFlagItem *fi, YaraCbData *cd) {
 		return true;
 	}
 
-	rz_strbuf_appendf(cd->sb, "\t\t// offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
+	rz_strbuf_appendf(cd->sb, "\t\t// asm offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
 
-	for (int i = 0; i < read;) {
+	rz_strbuf_appendf(cd->sb, "\t\t$%s = {\n", name);
+	for (pos = 0; pos < read;) {
 		rz_asm_op_init(&asmop);
-		int opsize = rz_asm_disassemble(cd->core->rasm, &asmop, &buffer[i], read - i);
+		int opsize = rz_asm_disassemble(cd->core->rasm, &asmop, &buffer[pos], read - pos);
 		if (opsize < 1) {
+			rz_asm_op_fini(&asmop);
 			break;
 		}
-		i += opsize;
-		rz_strbuf_appendf(cd->sb, "\t\t// %s\n", rz_strbuf_get(&asmop.buf_asm));
+
+		rz_strbuf_append(cd->sb, "\t\t\t");
+		for (int i = 0; i < opsize; ++i) {
+			if (mask[pos + i] == 0xFF) {
+				rz_strbuf_appendf(cd->sb, "%02X ", buffer[pos + i]);
+			} else if ((mask[pos + i] & 0xF0) != 0xF0 && (mask[pos + i] & 0x0F) != 0x0F) {
+				rz_strbuf_append(cd->sb, "?? ");
+			} else if ((mask[pos + i] & 0xF0) != 0xF0) {
+				rz_strbuf_appendf(cd->sb, "?%X ", buffer[pos + i] & 0xF);
+			} else {
+				rz_strbuf_appendf(cd->sb, "%X? ", (buffer[pos + i] >> 8));
+			}
+		}
+		pos += opsize;
+		rz_strbuf_appendf(cd->sb, "// %s\n", rz_strbuf_get(&asmop.buf_asm));
 		rz_asm_op_fini(&asmop);
 	}
-
-	rz_strbuf_appendf(cd->sb, "\t\t$%s = {\n\t\t\t", name);
-	for (int i = 0; i < read; ++i) {
-		if (i > 0 && !(i & 7)) {
-			rz_strbuf_append(cd->sb, "\n\t\t\t");
+	if (pos < read) {
+		rz_strbuf_append(cd->sb, "\t\t\t");
+		for (int i = 0; pos < read; ++i, ++pos) {
+			if (i > 0 && !(i & 7)) {
+				rz_strbuf_append(cd->sb, "\n\t\t\t");
+			}
+			if (mask[pos] == 0xFF) {
+				rz_strbuf_appendf(cd->sb, "%02X ", buffer[pos]);
+			} else if ((mask[pos] & 0xF0) != 0xF0 && (mask[pos] & 0x0F) != 0x0F) {
+				rz_strbuf_append(cd->sb, "?? ");
+			} else if ((mask[pos] & 0xF0) != 0xF0) {
+				rz_strbuf_appendf(cd->sb, "?%X ", buffer[pos] & 0xF);
+			} else {
+				rz_strbuf_appendf(cd->sb, "%X? ", (buffer[pos] >> 8));
+			}
 		}
-		if (mask[i] == 0xFF) {
-			rz_strbuf_appendf(cd->sb, "%02X ", buffer[i]);
-		} else if ((mask[i] & 0xF0) != 0xF0 && (mask[i] & 0x0F) != 0x0F) {
-			rz_strbuf_append(cd->sb, "?? ");
-		} else if ((mask[i] & 0xF0) != 0xF0) {
-			rz_strbuf_appendf(cd->sb, "?%X ", buffer[i] & 0xF);
-		} else {
-			rz_strbuf_appendf(cd->sb, "%X? ", (buffer[i] >> 8));
+	}
+	rz_strbuf_append(cd->sb, "\n\t\t}\n\n");
+	return true;
+}
+
+static bool flag_foreach_add_unmasked_asm(RzFlagItem *fi, YaraCbData *cd) {
+	ut8 buffer[0x1000];
+	RzAsmOp asmop;
+	int pos = 0;
+	const char *name = fi->name + strlen(RZ_YARA_FLAG_PREFIX_ASM_U);
+	if (RZ_STR_ISEMPTY(name)) {
+		YARA_WARN("invalid flag name: %s (skipping)\n", fi->name);
+		return true;
+	}
+
+	int read = RZ_MIN(fi->size, sizeof(buffer));
+	if (!rz_io_read_at_mapped(cd->core->io, fi->offset, buffer, read)) {
+		YARA_WARN("cannot read yara string %s (skipping)\n", fi->name);
+		return true;
+	}
+
+	rz_strbuf_appendf(cd->sb, "\t\t// asm offset: 0x%" PFMT64x ", size: 0x%x\n", fi->offset, read);
+
+	rz_strbuf_appendf(cd->sb, "\t\t$%s = {\n", name);
+	for (pos = 0; pos < read;) {
+		rz_asm_op_init(&asmop);
+		int opsize = rz_asm_disassemble(cd->core->rasm, &asmop, &buffer[pos], read - pos);
+		if (opsize < 1) {
+			rz_asm_op_fini(&asmop);
+			break;
+		}
+		rz_strbuf_append(cd->sb, "\t\t\t");
+		for (int i = 0; i < opsize; ++i) {
+			rz_strbuf_appendf(cd->sb, "%02X ", buffer[pos + i]);
+		}
+		pos += opsize;
+		rz_strbuf_appendf(cd->sb, "// %s\n", rz_strbuf_get(&asmop.buf_asm));
+		rz_asm_op_fini(&asmop);
+	}
+	if (pos < read) {
+		rz_strbuf_append(cd->sb, "\t\t\t");
+		for (int i = 0; pos < read; ++i, ++pos) {
+			if (i > 0 && !(i & 7)) {
+				rz_strbuf_append(cd->sb, "\n\t\t\t");
+			}
+			rz_strbuf_appendf(cd->sb, "%02X ", buffer[pos]);
 		}
 	}
 	rz_strbuf_append(cd->sb, "\n\t\t}\n\n");
@@ -244,7 +317,8 @@ RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE
 
 	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_STRING, (RzFlagItemCb)flag_foreach_add_string, &cd);
 	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_BYTES, (RzFlagItemCb)flag_foreach_add_bytes, &cd);
-	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_ASM, (RzFlagItemCb)flag_foreach_add_asm, &cd);
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_ASM_M, (RzFlagItemCb)flag_foreach_add_masked_asm, &cd);
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_ASM_U, (RzFlagItemCb)flag_foreach_add_unmasked_asm, &cd);
 
 	rz_strbuf_append(sb, "\tcondition:\n\t\tall of them\n}\n");
 	return rz_strbuf_drain(sb);

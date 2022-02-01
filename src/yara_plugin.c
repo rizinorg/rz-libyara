@@ -23,6 +23,14 @@ static const RzCmdDescHelp yara_command_grp_help = {
 	.summary = "Rizin custom yara parser and generator of YARA rules.",
 };
 
+static const RzCmdDescHelp yara_command_flag_grp_help = {
+	.summary = "Lists or adds or removes yara strings used to generate rules.",
+};
+
+static const RzCmdDescHelp yara_command_flag_add_grp_help = {
+	.summary = "Add yara strings used to generate rules.",
+};
+
 static const RzCmdDescArg yara_command_main_args[] = {
 	{ 0 },
 };
@@ -94,15 +102,19 @@ static const RzCmdDescHelp yara_command_metadata_help = {
 	.args = yara_command_metadata_args,
 };
 
-static const RzCmdDescArg yara_command_flag_args[] = {
-	{
-		.name = "add|del|clean|list",
-		.type = RZ_CMD_ARG_TYPE_STRING,
-	},
+static const RzCmdDescArg yara_command_flag_list_args[] = {
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_list_help = {
+	.summary = "Lists yara strings used to generate rules.",
+	.args = yara_command_flag_list_args,
+};
+
+static const RzCmdDescArg yara_command_flag_add_auto_args[] = {
 	{
 		.name = "name",
 		.type = RZ_CMD_ARG_TYPE_STRING,
-		.optional = true,
 	},
 	{
 		.name = "#bytes",
@@ -112,9 +124,100 @@ static const RzCmdDescArg yara_command_flag_args[] = {
 	{ 0 },
 };
 
-static const RzCmdDescHelp yara_command_flag_help = {
-	.summary = "Adds/Removes/Lists yara strings used when generating rules.",
-	.args = yara_command_flag_args,
+static const RzCmdDescHelp yara_command_flag_add_auto_help = {
+	.summary = "Adds a yara strings used when generating rules (auto type detection).",
+	.args = yara_command_flag_add_auto_args,
+};
+
+static const RzCmdDescArg yara_command_flag_add_string_args[] = {
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{
+		.name = "#bytes",
+		.type = RZ_CMD_ARG_TYPE_NUM,
+		.optional = true,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_add_string_help = {
+	.summary = "Adds a yara strings used when generating rules (string type).",
+	.args = yara_command_flag_add_string_args,
+};
+
+static const RzCmdDescArg yara_command_flag_add_bytes_args[] = {
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{
+		.name = "#bytes",
+		.type = RZ_CMD_ARG_TYPE_NUM,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_add_bytes_help = {
+	.summary = "Adds a yara strings used when generating rules (bytes type).",
+	.args = yara_command_flag_add_bytes_args,
+};
+
+static const RzCmdDescArg yara_command_flag_add_masked_asm_args[] = {
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{
+		.name = "#bytes",
+		.type = RZ_CMD_ARG_TYPE_NUM,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_add_masked_asm_help = {
+	.summary = "Adds a yara strings used when generating rules (masked assembly type).",
+	.args = yara_command_flag_add_masked_asm_args,
+};
+
+static const RzCmdDescArg yara_command_flag_add_unmasked_asm_args[] = {
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{
+		.name = "#bytes",
+		.type = RZ_CMD_ARG_TYPE_NUM,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_add_unmasked_asm_help = {
+	.summary = "Adds a yara strings used when generating rules (unmasked assembly type).",
+	.args = yara_command_flag_add_unmasked_asm_args,
+};
+
+static const RzCmdDescArg yara_command_flag_remove_args[] = {
+	{
+		.name = "flag name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_remove_help = {
+	.summary = "Removes a yara strings used when generating rules.",
+	.args = yara_command_flag_remove_args,
+};
+
+static const RzCmdDescArg yara_command_flag_clean_args[] = {
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_flag_clean_help = {
+	.summary = "Removes all the yara strings used when generating rules.",
+	.args = yara_command_flag_clean_args,
 };
 
 static void yara_command_load_error(bool is_warning, const char *file, int line, const RzYaraRule *rule, const char *message, void *user_data) {
@@ -328,13 +431,33 @@ static bool yara_is_valid_name(const char *name) {
 	return true;
 }
 
-static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name, ut64 n_bytes) {
+RZ_IPI RzCmdStatus yara_command_flag_list_handler(RzCore *core, int argc, const char **argv) {
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)print_all_strings_stored, NULL);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_remove_handler(RzCore *core, int argc, const char **argv) {
+	rz_flag_unset_name(core->flags, argv[1]);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_clean_handler(RzCore *core, int argc, const char **argv) {
+	rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_add_auto_handler(RzCore *core, int argc, const char **argv) {
 	char flagname[256];
+	bool is_string = false;
+	bool is_asm = false;
+	const char *name = argv[1];
+	ut64 n_bytes = 0;
+	if (argc == 3) {
+		n_bytes = rz_get_input_num_value(NULL, argv[2]);
+	}
 	if (!yara_is_valid_name(name)) {
 		return RZ_CMD_STATUS_WRONG_ARGS;
 	}
-	bool is_string = false;
-	bool is_asm = false;
 
 	RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
 	if (found) {
@@ -359,7 +482,7 @@ static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name,
 	if (is_string) {
 		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_STRING "%s", name);
 	} else if (is_asm) {
-		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM "%s", name);
+		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM_M "%s", name);
 	} else {
 		rz_strf(flagname, RZ_YARA_FLAG_PREFIX_BYTES "%s", name);
 	}
@@ -375,40 +498,105 @@ static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name,
 	return RZ_CMD_STATUS_OK;
 }
 
-RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char **argv) {
-	if (!strcmp(argv[1], "add")) {
-		if (argc != 4 && argc != 3) {
-			YARA_ERROR("usage: yaras add <string name> <# bytes> @ <address|flag>\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
+RZ_IPI RzCmdStatus yara_command_flag_add_string_handler(RzCore *core, int argc, const char **argv) {
+	char flagname[256];
+	const char *name = argv[1];
+	ut64 n_bytes = 0;
+	if (argc == 3) {
+		n_bytes = rz_get_input_num_value(NULL, argv[2]);
+	} else {
+		RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
+		if (!found) {
+			YARA_ERROR("cannot find string at 0x%" PFMT64x "\n", core->offset);
+			return RZ_CMD_STATUS_ERROR;
+		} else if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE_RULE)) {
+			YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
+			return RZ_CMD_STATUS_ERROR;
+		} else if (rz_str_startswith(found->name, "str.")) {
+			n_bytes = found->size;
 		}
-		ut64 n_bytes = 0;
-		if (argc == 4) {
-			n_bytes = rz_get_input_num_value(NULL, argv[3]);
-		}
-		return yara_command_flag_add_handler(core, argv[2], n_bytes);
-	} else if (!strcmp(argv[1], "del")) {
-		if (argc != 3) {
-			YARA_ERROR("usage: yaras del <string name>\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		rz_flag_unset_name(core->flags, argv[2]);
-		return RZ_CMD_STATUS_OK;
-	} else if (!strcmp(argv[1], "list")) {
-		if (argc != 2) {
-			YARA_ERROR("usage: yaras list\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)print_all_strings_stored, NULL);
-		return RZ_CMD_STATUS_OK;
-	} else if (!strcmp(argv[1], "clean")) {
-		if (argc != 2) {
-			YARA_ERROR("usage: yaras clean\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE_RULE);
-		return RZ_CMD_STATUS_OK;
 	}
-	return RZ_CMD_STATUS_WRONG_ARGS;
+	if (n_bytes < 1 || n_bytes > 0x1000) {
+		YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_STRING "%s", name);
+	if (rz_flag_get(core->flags, flagname)) {
+		YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+	rz_flag_space_pop(core->flags);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_add_bytes_handler(RzCore *core, int argc, const char **argv) {
+	char flagname[256];
+	const char *name = argv[1];
+	ut64 n_bytes = rz_get_input_num_value(NULL, argv[2]);
+
+	if (n_bytes < 1 || n_bytes > 0x1000) {
+		YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_BYTES "%s", name);
+	if (rz_flag_get(core->flags, flagname)) {
+		YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+	rz_flag_space_pop(core->flags);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_add_masked_asm_handler(RzCore *core, int argc, const char **argv) {
+	char flagname[256];
+	const char *name = argv[1];
+	ut64 n_bytes = rz_get_input_num_value(NULL, argv[2]);
+
+	if (n_bytes < 1 || n_bytes > 0x1000) {
+		YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM_M "%s", name);
+	if (rz_flag_get(core->flags, flagname)) {
+		YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+	rz_flag_space_pop(core->flags);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_add_unmasked_asm_handler(RzCore *core, int argc, const char **argv) {
+	char flagname[256];
+	const char *name = argv[1];
+	ut64 n_bytes = rz_get_input_num_value(NULL, argv[2]);
+
+	if (n_bytes < 1 || n_bytes > 0x1000) {
+		YARA_ERROR("invalid number of bytes (expected n between 1 and 0x1000)\n");
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_ASM_U "%s", name);
+	if (rz_flag_get(core->flags, flagname)) {
+		YARA_ERROR("yara string, named '%s', already exists\n", flagname);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
+	rz_flag_space_pop(core->flags);
+	return RZ_CMD_STATUS_OK;
 }
 
 static bool print_all_metadata_stored(void *unused, const char *k, const char *v) {
@@ -515,11 +703,38 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 	RzCmdDesc *yara_load_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaral", yara_command_load_handler, &yara_command_load_help);
 	rz_return_val_if_fail(yara_load_cd, false);
 
+	// yara metadata group
+
 	RzCmdDesc *yara_metadata_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaram", yara_command_metadata_handler, &yara_command_metadata_help);
 	rz_return_val_if_fail(yara_metadata_cd, false);
 
-	RzCmdDesc *yara_flag_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaras", yara_command_flag_handler, &yara_command_flag_help);
+	// yara flags group
+
+	RzCmdDesc *yara_flag_cd = rz_cmd_desc_group_new(rcmd, yara_cd, "yaras", yara_command_flag_list_handler, &yara_command_flag_list_help, &yara_command_flag_grp_help);
 	rz_return_val_if_fail(yara_flag_cd, false);
+
+	RzCmdDesc *yara_flag_add_cd = rz_cmd_desc_group_new(rcmd, yara_flag_cd, "yarasa", yara_command_flag_add_auto_handler, &yara_command_flag_add_auto_help, &yara_command_flag_add_grp_help);
+	rz_return_val_if_fail(yara_flag_add_cd, false);
+
+	RzCmdDesc *yara_flag_clean_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_cd, "yarasc", yara_command_flag_clean_handler, &yara_command_flag_clean_help);
+	rz_return_val_if_fail(yara_flag_clean_cd, false);
+
+	RzCmdDesc *yara_flag_remove_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_cd, "yarasr", yara_command_flag_remove_handler, &yara_command_flag_remove_help);
+	rz_return_val_if_fail(yara_flag_remove_cd, false);
+
+	// yara flags add options
+
+	RzCmdDesc *yara_flag_add_bytes_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_add_cd, "yarasab", yara_command_flag_add_bytes_handler, &yara_command_flag_add_bytes_help);
+	rz_return_val_if_fail(yara_flag_add_bytes_cd, false);
+
+	RzCmdDesc *yara_flag_add_string_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_add_cd, "yarasas", yara_command_flag_add_string_handler, &yara_command_flag_add_string_help);
+	rz_return_val_if_fail(yara_flag_add_string_cd, false);
+
+	RzCmdDesc *yara_flag_add_masm_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_add_cd, "yarasam", yara_command_flag_add_masked_asm_handler, &yara_command_flag_add_masked_asm_help);
+	rz_return_val_if_fail(yara_flag_add_masm_cd, false);
+
+	RzCmdDesc *yara_flag_add_uasm_cd = rz_cmd_desc_argv_new(rcmd, yara_flag_add_cd, "yarasau", yara_command_flag_add_unmasked_asm_handler, &yara_command_flag_add_unmasked_asm_help);
+	rz_return_val_if_fail(yara_flag_add_uasm_cd, false);
 
 	if (yr_initialize() != ERROR_SUCCESS) {
 		rz_warn_if_reached();

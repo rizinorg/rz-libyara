@@ -14,11 +14,13 @@ extern "C" {
 #define RZ_YARA_FLAG_SPACE_RULE        "yara.rule"
 #define RZ_YARA_FLAG_SPACE_RULE_STRING RZ_YARA_FLAG_SPACE_RULE ".str"
 #define RZ_YARA_FLAG_SPACE_RULE_BYTES  RZ_YARA_FLAG_SPACE_RULE ".bytes"
-#define RZ_YARA_FLAG_SPACE_RULE_ASM    RZ_YARA_FLAG_SPACE_RULE ".asm"
+#define RZ_YARA_FLAG_SPACE_RULE_ASM_M  RZ_YARA_FLAG_SPACE_RULE ".asm.m" // Masked assembly
+#define RZ_YARA_FLAG_SPACE_RULE_ASM_U  RZ_YARA_FLAG_SPACE_RULE ".asm.u" // Unmasked assembly
 #define RZ_YARA_FLAG_PREFIX_MATCH      RZ_YARA_FLAG_SPACE_MATCH "."
 #define RZ_YARA_FLAG_PREFIX_STRING     RZ_YARA_FLAG_SPACE_RULE_STRING "."
 #define RZ_YARA_FLAG_PREFIX_BYTES      RZ_YARA_FLAG_SPACE_RULE_BYTES "."
-#define RZ_YARA_FLAG_PREFIX_ASM        RZ_YARA_FLAG_SPACE_RULE_ASM "."
+#define RZ_YARA_FLAG_PREFIX_ASM_M      RZ_YARA_FLAG_SPACE_RULE_ASM_M "."
+#define RZ_YARA_FLAG_PREFIX_ASM_U      RZ_YARA_FLAG_SPACE_RULE_ASM_U "."
 
 typedef HtPP /*<const char*, const char*>*/ RzYaraMeta;
 typedef struct rz_yara_match_t {
