@@ -127,9 +127,13 @@ static void yara_command_load_error(bool is_warning, const char *file, int line,
 
 static void yara_add_match_flag(RzCore *core, const RzYaraMatch *match) {
 	char flagname[256];
-	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s_%s_", match->rule, match->string);
+	ut64 offset = rz_io_p2v(core->io, match->offset);
+	if (offset == UT64_MAX) {
+		offset = match->offset;
+	}
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s_%s_%" PFMT64x, match->rule, match->string + 1, match->offset);
 	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_MATCH);
-	rz_flag_set(core->flags, flagname, match->offset, match->size);
+	rz_flag_set(core->flags, flagname, offset, match->size);
 	rz_flag_space_pop(core->flags);
 }
 

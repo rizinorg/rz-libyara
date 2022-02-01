@@ -159,6 +159,7 @@ static YR_MEMORY_BLOCK *yara_rz_io_next_block(YR_MEMORY_BLOCK_ITERATOR *iterator
 	if (read < 1) {
 		return NULL;
 	} else {
+		yio->block.base = yio->offset;
 		yio->block.size = read;
 		yio->offset += read;
 	}
@@ -168,6 +169,7 @@ static YR_MEMORY_BLOCK *yara_rz_io_next_block(YR_MEMORY_BLOCK_ITERATOR *iterator
 static YR_MEMORY_BLOCK *yara_rz_io_get_first_block(YR_MEMORY_BLOCK_ITERATOR *iterator) {
 	YaraRzIO *yio = (YaraRzIO *)iterator->context;
 	yio->offset = 0;
+	yio->block.base = 0;
 	return yara_rz_io_next_block(iterator);
 }
 
@@ -178,7 +180,7 @@ static uint64_t yara_rz_io_file_size(YR_MEMORY_BLOCK_ITERATOR *iterator) {
 
 static const uint8_t *yara_rz_io_fetch_block(YR_MEMORY_BLOCK *block) {
 	YaraRzIO *yio = (YaraRzIO *)block->context;
-	return yio->buffer + block->base;
+	return yio->buffer;
 }
 
 RZ_API RzList /*<RzYaraMatch *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScanner *scanner, RZ_NONNULL RzCore *core) {
