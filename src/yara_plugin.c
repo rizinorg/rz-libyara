@@ -466,7 +466,7 @@ RZ_IPI RzCmdStatus yara_command_flag_add_auto_handler(RzCore *core, int argc, co
 			YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
 			return RZ_CMD_STATUS_ERROR;
 		} else if (rz_str_startswith(found->name, "str.")) {
-			n_bytes = found->size;
+			n_bytes = n_bytes == 0 ? found->size : n_bytes;
 			is_string = true;
 		} else if ((tmp = rz_analysis_get_functions_in(core->analysis, core->offset)) && rz_list_length(tmp) > 0) {
 			is_asm = true;
