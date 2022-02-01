@@ -47,10 +47,23 @@ RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata) {
 	ht_pp_free(metadata);
 }
 
+static inline bool is_hash(const char *key) {
+	return !rz_str_casecmp(key, "md5") ||
+		!rz_str_casecmp(key, "sha1") ||
+		!rz_str_casecmp(key, "sha2") || // alias for sha256
+		!rz_str_casecmp(key, "sha256") ||
+		!rz_str_casecmp(key, "crc32") ||
+		!rz_str_casecmp(key, "entropy");
+}
+
+static inline bool is_date_timestamp(const char *key) {
+	return !strcmp(key, "date") || !strcmp(key, "timestamp");
+}
+
 static bool add_metadata(YaraCbData *cd, const char *k, const char *v) {
 	if (!strcmp(v, "true") || !strcmp(v, "false") || rz_is_valid_input_num_value(NULL, v)) {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", k, v);
-	} else if ((!strcmp(k, "date") || !strcmp(k, "timestamp")) && RZ_STR_ISEMPTY(v)) {
+	} else if (RZ_STR_ISEMPTY(v) && is_date_timestamp(k)) {
 		char buffer[0x100];
 		const char *fmt = rz_config_get(cd->core->config, RZ_YARA_CFG_DATE_FMT);
 		if (RZ_STR_ISEMPTY(fmt)) {
@@ -60,6 +73,33 @@ static bool add_metadata(YaraCbData *cd, const char *k, const char *v) {
 			struct tm *tm_info = localtime(&timer);
 			strftime(buffer, sizeof(buffer), fmt, tm_info);
 			rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, buffer);
+		}
+	} else if (RZ_STR_ISEMPTY(v) && is_hash(k)) {
+		ut64 limit = rz_config_get_i(cd->core->config, "bin.hashlimit");
+		RzBinFile *bf = rz_bin_cur(cd->core->bin);
+		if (!bf) {
+			YARA_WARN("cannot get current opened binary.\n");
+		} else {
+			const char *algo = k;
+			if (!rz_str_casecmp(algo, "sha2")) {
+				algo = "sha256";
+			}
+			RzList *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
+			RzBinFileHash *h = NULL;
+			RzListIter *it = NULL;
+			rz_list_foreach (hashes, it, h) {
+				if (rz_str_casecmp(algo, h->type)) {
+					continue;
+				}
+				if (!strncmp(h->type, "entropy", strlen("entropy"))) {
+					// entropy and entropy_fract are floats
+					rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", k, h->hex);
+				} else {
+					rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, h->hex);
+				}
+				break;
+			}
+			rz_list_free(hashes);
 		}
 	} else {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, v);
@@ -202,9 +242,9 @@ RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE
 
 	rz_strbuf_append(sb, "\tstrings:\n");
 
-	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_STRING, (RzFlagItemCb)flag_foreach_add_string, &cd);
-	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_BYTES, (RzFlagItemCb)flag_foreach_add_bytes, &cd);
-	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_ASM, (RzFlagItemCb)flag_foreach_add_asm, &cd);
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_STRING, (RzFlagItemCb)flag_foreach_add_string, &cd);
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_BYTES, (RzFlagItemCb)flag_foreach_add_bytes, &cd);
+	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE_ASM, (RzFlagItemCb)flag_foreach_add_asm, &cd);
 
 	rz_strbuf_append(sb, "\tcondition:\n\t\tall of them\n}\n");
 	return rz_strbuf_drain(sb);

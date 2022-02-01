@@ -125,6 +125,14 @@ static void yara_command_load_error(bool is_warning, const char *file, int line,
 	YARA_ERROR("%s:%d: %s\n", file, line, message);
 }
 
+static void yara_add_match_flag(RzCore *core, const RzYaraMatch *match) {
+	char flagname[256];
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s_%s_", match->rule, match->string);
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_MATCH);
+	rz_flag_set(core->flags, flagname, match->offset, match->size);
+	rz_flag_space_pop(core->flags);
+}
+
 RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char **argv) {
 	RzYaraMatch *ym = NULL;
 	int timeout_secs = 0;
@@ -161,13 +169,10 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 	rz_yara_scanner_free(scanner);
 	rz_yara_rules_free(rules);
 
-	if (matches && rz_list_length(matches) < 1) {
-		rz_cons_printf("no matches\n");
-	} else {
-		rz_list_foreach (matches, it, ym) {
-			rz_cons_printf("0x%" PFMT64x " 0x%x %s %s\n", ym->offset, ym->size, ym->string, ym->rule);
-		}
+	rz_list_foreach (matches, it, ym) {
+		yara_add_match_flag(core, ym);
 	}
+	rz_cons_printf("%u matches (check f~" RZ_YARA_FLAG_PREFIX_MATCH ")\n", rz_list_length(matches));
 	rz_list_free(matches);
 
 	return matches ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -267,15 +272,10 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	rz_yara_scanner_free(scanner);
 	rz_yara_rules_free(rules);
 
-	if (list) {
-		if (rz_list_length(list) < 1) {
-			rz_cons_printf("no matches\n");
-		} else {
-			rz_list_foreach (list, it, ym) {
-				rz_cons_printf("0x%" PFMT64x " 0x%x %s %s\n", ym->offset, ym->size, ym->string, ym->rule);
-			}
-		}
+	rz_list_foreach (list, it, ym) {
+		yara_add_match_flag(core, ym);
 	}
+	rz_cons_printf("%u matches (check f~" RZ_YARA_FLAG_PREFIX_MATCH ")\n", rz_list_length(list));
 	rz_list_free(list);
 
 	return list ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -333,7 +333,7 @@ static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name,
 	RzFlagItem *found = rz_flag_get_at(core->flags, core->offset, false);
 	if (found) {
 		RzList *tmp = NULL;
-		if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE)) {
+		if (rz_str_startswith(found->name, RZ_YARA_FLAG_SPACE_RULE)) {
 			YARA_ERROR("there is already a yara string defined at 0x%" PFMT64x "\n", core->offset);
 			return RZ_CMD_STATUS_ERROR;
 		} else if (rz_str_startswith(found->name, "str.")) {
@@ -363,7 +363,7 @@ static RzCmdStatus yara_command_flag_add_handler(RzCore *core, const char *name,
 		return RZ_CMD_STATUS_WRONG_ARGS;
 	}
 
-	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE);
+	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_RULE);
 	rz_flag_set(core->flags, flagname, core->offset, n_bytes);
 	rz_flag_space_pop(core->flags);
 	return RZ_CMD_STATUS_OK;
@@ -392,14 +392,14 @@ RZ_IPI RzCmdStatus yara_command_flag_handler(RzCore *core, int argc, const char 
 			YARA_ERROR("usage: yaras list\n");
 			return RZ_CMD_STATUS_WRONG_ARGS;
 		}
-		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE, (RzFlagItemCb)print_all_strings_stored, NULL);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)print_all_strings_stored, NULL);
 		return RZ_CMD_STATUS_OK;
 	} else if (!strcmp(argv[1], "clean")) {
 		if (argc != 2) {
 			YARA_ERROR("usage: yaras clean\n");
 			return RZ_CMD_STATUS_WRONG_ARGS;
 		}
-		rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE);
+		rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE_RULE);
 		return RZ_CMD_STATUS_OK;
 	}
 	return RZ_CMD_STATUS_WRONG_ARGS;
