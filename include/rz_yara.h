@@ -30,19 +30,19 @@ extern "C" {
 
 typedef HtPP /*<const char*, const char*>*/ RzYaraMeta;
 typedef struct rz_yara_match_t {
-    char *rule;
-    char *string;
-    ut64 offset;
-    ut32 size;
+	char *rule;
+	char *string;
+	ut64 offset;
+	ut32 size;
 } RzYaraMatch;
 
 typedef struct YR_RULE RzYaraRule;
 typedef struct YR_RULES RzYaraRules;
 typedef struct _YR_COMPILER RzYaraCompiler;
 typedef struct YR_SCAN_CONTEXT RzYaraScanner;
-typedef void (*RzYaraCompilerErrorCb)(bool is_warning, const char* file_name, int line_number,
-    const RzYaraRule* rule, const char* message, void* user_data);
-typedef void (*RzYaraRulesCb)(void *cb_data, const char* identifier, const char* tags);
+typedef void (*RzYaraCompilerErrorCb)(bool is_warning, const char *file_name, int line_number,
+	const RzYaraRule *rule, const char *message, void *user_data);
+typedef void (*RzYaraRulesCb)(void *cb_data, const char *identifier, const char *tags);
 
 RZ_API void rz_yara_rules_free(RZ_NULLABLE RzYaraRules *rules);
 RZ_API void rz_yara_rules_foreach(RZ_NONNULL RzYaraRules *rules, RZ_NONNULL RzYaraRulesCb callback, void *cb_data);
@@ -60,7 +60,6 @@ RZ_API RzList /*<RzYaraMatch *>*/ *rz_yara_scanner_search(RZ_NONNULL RzYaraScann
 RZ_API RZ_OWN RzYaraMeta *rz_yara_metadata_new();
 RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata);
 RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE RzYaraMeta *metadata, RZ_NONNULL const char *name);
-
 
 #ifdef __cplusplus
 }

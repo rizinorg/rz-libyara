@@ -19,20 +19,127 @@
 
 static HtPP *yara_metadata = NULL;
 
+static const RzCmdDescDetailEntry yara_command_grp_complete_create_example[] = {
+	{ .text = "yarama ", .arg_str = "author \"John Doe\"", .comment = "Adds metadata key 'author' and its value 'John Doe'" },
+	{ .text = "yarama ", .arg_str = "date", .comment = "Adds metadata key 'date' (auto filled)" },
+	{ .text = "yaramc ", .arg_str = "malware", .comment = "Creates a new yara rule named 'malware'" },
+	{ .text = "yarasa ", .arg_str = "congrats @ str.Congrats", .comment = "Adds a string (auto type) in the yara rule" },
+	{ .text = "yarasa ", .arg_str = "aes_sbox 255 @ sym.aes_sbox", .comment = "Adds 255 bytes (auto type) in the yara rule" },
+	{ .text = "yarasa ", .arg_str = "payload 30 @ sym.payload", .comment = "Adds 30 bytes of masked assembly (auto type) in the yara rule" },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_TAGS "=\"crypto, ransomware\"", .comment = "Sets the tags for the yara rule" },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_DATE_FMT "=\"%Y-%m-%d\"", .comment = "Sets the date format" },
+	{ .text = "yarac ", .arg_str = "malware", .comment = "Prints the new yara rule with name 'malware' containing strings and metadata" },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_grp_complete_parse_example[] = {
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_EXTENSIONS "=\".yar,.yara,.rule\"", .comment = "Sets the yara file extensions (default: " YARA_CFG_EXTENSIONS_DFLT ")" },
+	{ .text = "yaral ", .arg_str = "/path/to/my/rule.yara", .comment = "Loads a *.yara or *.yar and sets the flags of each match" },
+	{ .text = "yarad ", .arg_str = "/path/to/my/rules/", .comment = "Loads all *.yara or *.yar rules from a folder and sets the flags of each match" },
+	{ .text = "f ", .arg_str = "~" RZ_YARA_FLAG_SPACE_MATCH, .comment = "Shows all the matches of the file" },
+	{ .text = "px ", .arg_str = "@ yara.match.pa.malware_payload_1234 @e:io.va=false", .comment = "Shows bytes of 'malware' rule & matched 'payload' string on physical address '1234'" },
+	{ .text = "px ", .arg_str = "@ yara.match.va.aes_sbox_1234 @e:io.va=true", .comment = "Shows bytes of 'aes' rule & matched 'sbox' string on virtual address '1234'" },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_grp_complete_environment_variables[] = {
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_TAGS, .comment = YARA_CFG_TAGS_DETAILS },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_EXTENSIONS, .comment = YARA_CFG_EXTENSIONS_DETAILS },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_DATE_FMT, .comment = YARA_CFG_DATE_FMT_DETAILS },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_TIMEOUT, .comment = YARA_CFG_TIMEOUT_DETAILS },
+	{ .text = "e ", .arg_str = RZ_YARA_CFG_FASTMODE, .comment = YARA_CFG_FASTMODE_DETAILS },
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_grp_complete_details[] = {
+	{ .name = "Create yara a rule", .entries = yara_command_grp_complete_create_example },
+	{ .name = "Parse and apply yara rules", .entries = yara_command_grp_complete_parse_example },
+	{ .name = "Environment variables", .entries = yara_command_grp_complete_environment_variables },
+	{ 0 },
+};
+
 static const RzCmdDescHelp yara_command_grp_help = {
 	.summary = "Rizin custom yara parser and generator of YARA rules.",
+	.details = yara_command_grp_complete_details,
+};
+
+static const RzCmdDescDetailEntry yara_command_create_examples[] = {
+	{ .text = "yarac ", .arg_str = "malware", .comment = "Creates a new yara rule named 'malware'" },
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_create_details[] = {
+	{ .name = "Create yara rule", .entries = yara_command_create_examples },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_parse_examples[] = {
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_parse_details[] = {
+	{ .name = "Load yara rules", .entries = yara_command_parse_examples },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_flag_grp_add_auto_examples[] = {
+	{ .text = "yarasa ", .arg_str = "congrats @ str.Congrats", .comment = "Adds a string (auto type)" },
+	{ .text = "yarasa ", .arg_str = "aes_sbox 255 @ sym.aes_sbox", .comment = "Adds 255 bytes (auto type)" },
+	{ .text = "yarasa ", .arg_str = "payload 30 @ sym.payload", .comment = "Adds 30 bytes of masked assembly (auto type)" },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_flag_grp_add_manual_examples[] = {
+	{ .text = "yarasab ", .arg_str = "my_bytes 15 @ 0xdeadbeef", .comment = "Adds 15 bytes (bytes type)" },
+	{ .text = "yarasas ", .arg_str = "my_string 22 @ 0xdeadbeef", .comment = "Adds a string 22 bytes long (string type)" },
+	{ .text = "yarasam ", .arg_str = "function 30 @ sym.function", .comment = "Adds 30 bytes of masked assembly (assembly type)" },
+	{ .text = "yarasau ", .arg_str = "payload 25 @ sym.payload", .comment = "Adds 25 bytes of unmasked assembly (assembly type)" },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_flag_grp_remove_examples[] = {
+	{ .text = "yarasr ", .arg_str = "yara.bytes.my_bytes", .comment = "Removes a yara flag" },
+	{ .text = "yarasc", .arg_str = NULL, .comment = "Removes all yara flags" },
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_flag_grp_details[] = {
+	{ .name = "Add yara strings to yara rule (auto type)", .entries = yara_command_flag_grp_add_auto_examples },
+	{ .name = "Add yara strings to yara rule (manual type)", .entries = yara_command_flag_grp_add_manual_examples },
+	{ .name = "Remove yara strings from yara rule", .entries = yara_command_flag_grp_remove_examples },
+	{ 0 },
 };
 
 static const RzCmdDescHelp yara_command_flag_grp_help = {
 	.summary = "Lists or adds or removes yara strings used to generate rules.",
+	.details = yara_command_flag_grp_details,
 };
 
 static const RzCmdDescHelp yara_command_flag_add_grp_help = {
 	.summary = "Add yara strings used to generate rules.",
 };
 
+static const RzCmdDescDetailEntry yara_command_metadata_grp_add_examples[] = {
+	{ .text = "yarama ", .arg_str = "author \"John Doe\"", .comment = "Adds 'author' key and its value 'John Doe'" },
+	{ .text = "yarama ", .arg_str = "date", .comment = "Adds timestamp keyword (with auto fill)" },
+	{ .text = "yarama ", .arg_str = "sha256", .comment = "Adds sha256 keyword (with auto fill)" },
+	{ 0 },
+};
+
+static const RzCmdDescDetailEntry yara_command_metadata_grp_remove_examples[] = {
+	{ .text = "yaramr ", .arg_str = "author", .comment = "Removes a yara flag called 'author'" },
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_metadata_grp_details[] = {
+	{ .name = "Add metadata to yara rule", .entries = yara_command_metadata_grp_add_examples },
+	{ .name = "Remove metadata from yara rule", .entries = yara_command_metadata_grp_remove_examples },
+	{ 0 },
+};
+
 static const RzCmdDescHelp yara_command_metadata_grp_help = {
-	.summary = "Adds/Removes/Lists metadata used when generating rules.",
+	.summary = "Lists or adds or removes metadata used when generating rules.",
+	.details = yara_command_metadata_grp_details,
 };
 
 static const RzCmdDescArg yara_command_main_args[] = {
@@ -54,6 +161,7 @@ static const RzCmdDescArg yara_command_create_args[] = {
 
 static const RzCmdDescHelp yara_command_create_help = {
 	.summary = "Creates a new rule at the current offset",
+	.details = yara_command_create_details,
 	.args = yara_command_create_args,
 };
 
@@ -67,6 +175,7 @@ static const RzCmdDescArg yara_command_load_args[] = {
 
 static const RzCmdDescHelp yara_command_load_help = {
 	.summary = "Parse a .yar/.yara file and applies the rules",
+	.details = yara_command_parse_details,
 	.args = yara_command_load_args,
 };
 
@@ -80,6 +189,7 @@ static const RzCmdDescArg yara_command_folder_args[] = {
 
 static const RzCmdDescHelp yara_command_folder_help = {
 	.summary = "Searches for .yar/.yara files in a folder recursively and applies the rules",
+	.details = yara_command_parse_details,
 	.args = yara_command_folder_args,
 };
 
@@ -105,8 +215,28 @@ static const RzCmdDescArg yara_command_metadata_add_args[] = {
 	{ 0 },
 };
 
+static const RzCmdDescDetailEntry yara_command_metadata_keywords_entries[] = {
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_CRC32, .comment = "File crc32" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_ENTROPY, .comment = "File entropy" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_MD5, .comment = "File md5" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_SHA1, .comment = "File sha1" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_SHA2, .comment = "File sha2" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_HASH_SHA256, .comment = "File sha256" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_DATE, .comment = "Current date, see `el " RZ_YARA_CFG_DATE_FMT "` for the format" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_TIME, .comment = "Current date, see `el " RZ_YARA_CFG_DATE_FMT "` for the format" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_TIMESTAMP, .comment = "Current date, see `el " RZ_YARA_CFG_DATE_FMT "` for the format" },
+	{ .text = "yarama ", .arg_str = YARA_KEYWORD_CREATION, .comment = "Current date, see `el " RZ_YARA_CFG_DATE_FMT "` for the format" },
+	{ 0 },
+};
+
+static const RzCmdDescDetail yara_command_metadata_keywords_details[] = {
+	{ .name = "Keywords with auto fill property", .entries = yara_command_metadata_keywords_entries },
+	{ 0 },
+};
+
 static const RzCmdDescHelp yara_command_metadata_add_help = {
 	.summary = "Adds metadata used when generating rules.",
+	.details = yara_command_metadata_keywords_details,
 	.args = yara_command_metadata_add_args,
 };
 
@@ -257,7 +387,7 @@ static void yara_add_match_flag(RzCore *core, const RzYaraMatch *match) {
 		mem_loc = "pa";
 		offset = match->offset;
 	}
-	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s.%s_%s_%" PFMT64x, mem_loc, match->rule, match->string + 1, match->offset);
+	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s.%s_%s_%" PFMT64x, mem_loc, match->rule, match->string + 1, offset);
 	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_MATCH);
 	rz_flag_set(core->flags, flagname, offset, match->size);
 	rz_flag_space_pop(core->flags);
@@ -333,7 +463,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	dir_depth = rz_config_get_i(core->config, "dir.depth");
 	ext = rz_config_get(core->config, RZ_YARA_CFG_EXTENSIONS);
 	if (RZ_STR_ISEMPTY(ext)) {
-		ext = YARA_DEFAULT_EXT;
+		ext = YARA_CFG_EXTENSIONS_DFLT;
 	}
 	fast_mode = rz_config_get_b(core->config, RZ_YARA_CFG_FASTMODE);
 	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
@@ -751,45 +881,6 @@ RZ_IPI RzCmdStatus yara_command_metadata_remove_handler(RzCore *core, int argc, 
 	return RZ_CMD_STATUS_OK;
 }
 
-/*
-RZ_IPI RzCmdStatus yara_command_main_handler(RzCore *core, int argc, const char **argv) {
-	const char *usage = ""
-			    "commands:\n"
-			    "  yaras add <name> <#bytes> # to create a new yara string\n"
-			    "  yaras del <name>          # to remove a yara string\n"
-			    "  yaras list                # to list all yara strings\n"
-			    "  yaras clean               # to remove all yara string\n"
-			    "  yarac <rulename>          # to create a new rule\n"
-			    "  yarad <directory>         # to loads all yara files and applies to the binary\n"
-			    "  yaral <file>              # to load a yara file and apply to the binary\n"
-			    "  yaram add <key> <value>   # adds a metadata key value (used by yarac)\n"
-			    "  yaram del <key>           # removes a metadata key\n"
-			    "  yaram list <key>          # lists all metadata keys\n"
-			    "\n"
-			    "usage examples:\n"
-			    "  to create a rule\n"
-			    "    yarasa rooted_00 @ str.rooted\n"
-			    "    yarasa shell_code 10 @ fcn.0x123+2\n"
-			    "    yarasa aes_sbox 256 @ 0x1234\n"
-			    "    yarasa mistake 256 @ 0xdeadbeef\n"
-			    "    yarasd yara.bytes.mistake\n"
-			    "    yarac bad_malware\n"
-			    "\n"
-			    "  to add metadata when creating a rule\n"
-			    "    yaram add author \"john foo\"\n"
-			    "    yaram add thread_level 3\n"
-			    "    yaram add is_elf true\n"
-			    "    yaram add date \"\" # if empty, generates one (see also 'el " RZ_YARA_CFG_DATE_FMT "')\n"
-			    "  to remove a metadata key\n"
-			    "    yaram del is_elf\n"
-			    "  to list all the metadata key/values\n"
-			    "    yaram list";
-
-	rz_cons_println(usage);
-	return RZ_CMD_STATUS_OK;
-}
-*/
-
 RZ_IPI bool yara_plugin_init(RzCore *core) {
 	yara_metadata = rz_yara_metadata_new();
 	if (!yara_metadata) {
@@ -806,11 +897,11 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 	}
 
 	rz_config_lock(cfg, false);
-	SETPREFS(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
-	SETPREFS(RZ_YARA_CFG_EXTENSIONS, YARA_DEFAULT_EXT, "yara file extensions, comma separated (default " YARA_DEFAULT_EXT ").");
-	SETPREFS(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d", "yara metadata date format (uses strftime for formatting).");
-	SETPREFI(RZ_YARA_CFG_TIMEOUT, 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
-	SETPREFB(RZ_YARA_CFG_FASTMODE, false, "yara scanner fast mode, skips multiple matches (default: false).");
+	SETPREFS(RZ_YARA_CFG_TAGS, YARA_CFG_TAGS_DFLT, YARA_CFG_TAGS_DETAILS);
+	SETPREFS(RZ_YARA_CFG_EXTENSIONS, YARA_CFG_EXTENSIONS_DFLT, YARA_CFG_EXTENSIONS_DETAILS);
+	SETPREFS(RZ_YARA_CFG_DATE_FMT, YARA_CFG_DATE_FMT_DFLT, YARA_CFG_DATE_FMT_DETAILS);
+	SETPREFI(RZ_YARA_CFG_TIMEOUT, YARA_CFG_TIMEOUT_DFLT, YARA_CFG_TIMEOUT_DETAILS);
+	SETPREFB(RZ_YARA_CFG_FASTMODE, YARA_CFG_FASTMODE_DFLT, YARA_CFG_FASTMODE_DETAILS);
 	rz_config_lock(cfg, true);
 
 	RzCmdDesc *yara_cd = rz_cmd_desc_group_new(rcmd, root_cd, "yara", NULL, &yara_command_main_help, &yara_command_grp_help);

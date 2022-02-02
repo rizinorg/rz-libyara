@@ -11,7 +11,17 @@
 #define YARA_WARN(f, ...)  RZ_LOG_WARN("YARA: " f, ##__VA_ARGS__)
 #define YARA_INFO(f, ...)  RZ_LOG_INFO("YARA: " f, ##__VA_ARGS__)
 
-#define YARA_DEFAULT_EXT ".yar,.yara"
+#define YARA_CFG_TAGS_DFLT       ""
+#define YARA_CFG_EXTENSIONS_DFLT ".yar,.yara"
+#define YARA_CFG_DATE_FMT_DFLT   "%Y-%m-%d"
+#define YARA_CFG_TIMEOUT_DFLT    (5 * 60)
+#define YARA_CFG_FASTMODE_DFLT   false
+
+#define YARA_CFG_TAGS_DETAILS       "yara rule tags uses when generating rules (space separated)."
+#define YARA_CFG_EXTENSIONS_DETAILS "yara file extensions, comma separated (default " YARA_CFG_EXTENSIONS_DFLT ")."
+#define YARA_CFG_DATE_FMT_DETAILS   "yara metadata date format (uses strftime for formatting)."
+#define YARA_CFG_TIMEOUT_DETAILS    "yara scanner timeout in seconds (default: 5mins)."
+#define YARA_CFG_FASTMODE_DETAILS   "yara scanner fast mode, skips multiple matches (default: false)."
 
 #define YARA_KEYWORD_HASH_MD5     "md5"
 #define YARA_KEYWORD_HASH_SHA1    "sha1"
