@@ -31,6 +31,10 @@ static const RzCmdDescHelp yara_command_flag_add_grp_help = {
 	.summary = "Add yara strings used to generate rules.",
 };
 
+static const RzCmdDescHelp yara_command_metadata_grp_help = {
+	.summary = "Adds/Removes/Lists metadata used when generating rules.",
+};
+
 static const RzCmdDescArg yara_command_main_args[] = {
 	{ 0 },
 };
@@ -79,15 +83,19 @@ static const RzCmdDescHelp yara_command_folder_help = {
 	.args = yara_command_folder_args,
 };
 
-static const RzCmdDescArg yara_command_metadata_args[] = {
-	{
-		.name = "add|del|list",
-		.type = RZ_CMD_ARG_TYPE_STRING,
-	},
+static const RzCmdDescArg yara_command_metadata_list_args[] = {
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_metadata_list_help = {
+	.summary = "Lists metadata used when generating rules.",
+	.args = yara_command_metadata_list_args,
+};
+
+static const RzCmdDescArg yara_command_metadata_add_args[] = {
 	{
 		.name = "name",
 		.type = RZ_CMD_ARG_TYPE_STRING,
-		.optional = true,
 	},
 	{
 		.name = "value",
@@ -97,9 +105,22 @@ static const RzCmdDescArg yara_command_metadata_args[] = {
 	{ 0 },
 };
 
-static const RzCmdDescHelp yara_command_metadata_help = {
-	.summary = "Adds/Removes/Lists metadata used when generating rules.",
-	.args = yara_command_metadata_args,
+static const RzCmdDescHelp yara_command_metadata_add_help = {
+	.summary = "Adds metadata used when generating rules.",
+	.args = yara_command_metadata_add_args,
+};
+
+static const RzCmdDescArg yara_command_metadata_remove_args[] = {
+	{
+		.name = "name",
+		.type = RZ_CMD_ARG_TYPE_STRING,
+	},
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_metadata_remove_help = {
+	.summary = "Removes metadata used when generating rules.",
+	.args = yara_command_metadata_remove_args,
 };
 
 static const RzCmdDescArg yara_command_flag_list_args[] = {
@@ -201,7 +222,7 @@ static const RzCmdDescHelp yara_command_flag_add_unmasked_asm_help = {
 static const RzCmdDescArg yara_command_flag_remove_args[] = {
 	{
 		.name = "flag name",
-		.type = RZ_CMD_ARG_TYPE_STRING,
+		.type = RZ_CMD_ARG_TYPE_FLAG,
 	},
 	{ 0 },
 };
@@ -312,7 +333,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	dir_depth = rz_config_get_i(core->config, "dir.depth");
 	ext = rz_config_get(core->config, RZ_YARA_CFG_EXTENSIONS);
 	if (RZ_STR_ISEMPTY(ext)) {
-		ext = DEFAULT_YARA_EXT;
+		ext = YARA_DEFAULT_EXT;
 	}
 	fast_mode = rz_config_get_b(core->config, RZ_YARA_CFG_FASTMODE);
 	timeout_secs = rz_config_get_i(core->config, RZ_YARA_CFG_TIMEOUT);
@@ -401,10 +422,70 @@ RZ_IPI RzCmdStatus yara_command_create_handler(RzCore *core, int argc, const cha
 	return RZ_CMD_STATUS_OK;
 }
 
-static bool print_all_strings_stored(RzFlagItem *fi, void *unused) {
+static bool yara_flag_list_standard(RzFlagItem *fi, void *unused) {
 	(void)unused;
 	rz_cons_printf("0x%" PFMT64x " 0x%" PFMT64x " %s\n", fi->offset, fi->size, fi->name);
 	return true;
+}
+
+static bool yara_flag_list_quiet(RzFlagItem *fi, void *unused) {
+	(void)unused;
+	rz_cons_printf("%s\n", fi->name);
+	return true;
+}
+
+static bool yara_flag_list_json(RzFlagItem *fi, PJ *pj) {
+	pj_o(pj);
+	pj_ks(pj, "name", fi->name);
+	pj_kn(pj, "offset", fi->offset);
+	pj_kn(pj, "size", fi->size);
+	pj_end(pj);
+	return true;
+}
+
+static bool yara_flag_list_table(RzFlagItem *fi, RzTable *table) {
+	rz_table_add_rowf(table, "Xxs", fi->offset, fi->size, fi->name);
+	return true;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_list_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
+	RzCmdStatus res = RZ_CMD_STATUS_OK;
+	switch (state->mode) {
+	case RZ_OUTPUT_MODE_STANDARD:
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_standard, NULL);
+		break;
+	case RZ_OUTPUT_MODE_QUIET:
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_quiet, NULL);
+		break;
+	case RZ_OUTPUT_MODE_JSON:
+		pj_a(state->d.pj);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_json, state->d.pj);
+		pj_end(state->d.pj);
+		break;
+	case RZ_OUTPUT_MODE_TABLE:
+		rz_table_set_columnsf(state->d.t, "Xxs", "offset", "size", "name", NULL);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_table, state->d.t);
+		break;
+	default:
+		rz_warn_if_reached();
+		res = RZ_CMD_STATUS_WRONG_ARGS;
+		break;
+	}
+	return res;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_remove_handler(RzCore *core, int argc, const char **argv) {
+	if (strncmp(argv[1], RZ_YARA_FLAG_SPACE_RULE, strlen(RZ_YARA_FLAG_SPACE_RULE))) {
+		YARA_ERROR("%s is not a yara rule flag (" RZ_YARA_FLAG_SPACE_RULE ".*)\n", argv[1]);
+		return RZ_CMD_STATUS_WRONG_ARGS;
+	}
+	rz_flag_unset_name(core->flags, argv[1]);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_flag_clean_handler(RzCore *core, int argc, const char **argv) {
+	rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE_RULE);
+	return RZ_CMD_STATUS_OK;
 }
 
 static bool yara_is_valid_name(const char *name) {
@@ -429,21 +510,6 @@ static bool yara_is_valid_name(const char *name) {
 		return false;
 	}
 	return true;
-}
-
-RZ_IPI RzCmdStatus yara_command_flag_list_handler(RzCore *core, int argc, const char **argv) {
-	rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)print_all_strings_stored, NULL);
-	return RZ_CMD_STATUS_OK;
-}
-
-RZ_IPI RzCmdStatus yara_command_flag_remove_handler(RzCore *core, int argc, const char **argv) {
-	rz_flag_unset_name(core->flags, argv[1]);
-	return RZ_CMD_STATUS_OK;
-}
-
-RZ_IPI RzCmdStatus yara_command_flag_clean_handler(RzCore *core, int argc, const char **argv) {
-	rz_flag_unset_all_in_space(core->flags, RZ_YARA_FLAG_SPACE_RULE);
-	return RZ_CMD_STATUS_OK;
 }
 
 RZ_IPI RzCmdStatus yara_command_flag_add_auto_handler(RzCore *core, int argc, const char **argv) {
@@ -599,38 +665,93 @@ RZ_IPI RzCmdStatus yara_command_flag_add_unmasked_asm_handler(RzCore *core, int 
 	return RZ_CMD_STATUS_OK;
 }
 
-static bool print_all_metadata_stored(void *unused, const char *k, const char *v) {
+static bool yara_metadata_list_standard(void *unused, const char *k, const char *v) {
 	(void)unused;
-	rz_cons_printf("%s = %s\n", k, v);
+	if (RZ_STR_ISEMPTY(v) && (is_keyword_hash(k) || is_keyword_date(k))) {
+		rz_cons_printf("%s = <auto filled>\n", k);
+	} else {
+		rz_cons_printf("%s = %s\n", k, v);
+	}
 	return true;
 }
 
-RZ_IPI RzCmdStatus yara_command_metadata_handler(RzCore *core, int argc, const char **argv) {
-	if (!strcmp(argv[1], "add")) {
-		if (argc != 4) {
-			YARA_ERROR("usage: yaram add author \"john foo\"\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		ht_pp_update(yara_metadata, argv[2], (void *)argv[3]);
-		return RZ_CMD_STATUS_OK;
-	} else if (!strcmp(argv[1], "del")) {
-		if (argc != 3) {
-			YARA_ERROR("usage: yaram del author\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		ht_pp_delete(yara_metadata, argv[2]);
-		return RZ_CMD_STATUS_OK;
-	} else if (!strcmp(argv[1], "list")) {
-		if (argc != 2) {
-			YARA_ERROR("usage: yaram list\n");
-			return RZ_CMD_STATUS_WRONG_ARGS;
-		}
-		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)print_all_metadata_stored, NULL);
-		return RZ_CMD_STATUS_OK;
-	}
-	return RZ_CMD_STATUS_WRONG_ARGS;
+static bool yara_metadata_list_quiet(void *unused, const char *k, const char *v) {
+	(void)unused;
+	rz_cons_printf("%s %s\n", k, v);
+	return true;
 }
 
+static bool yara_metadata_list_json(PJ *pj, const char *k, const char *v) {
+	if (!strcmp(v, YARA_KEYWORD_TRUE) || !strcmp(v, YARA_KEYWORD_FALSE)) {
+		pj_kb(pj, k, v[0] == 't');
+	} else if (rz_is_valid_input_num_value(NULL, v)) {
+		ut64 num = rz_get_input_num_value(NULL, v);
+		pj_kn(pj, k, num);
+	} else {
+		pj_ks(pj, k, v);
+	}
+	return true;
+}
+
+static bool yara_metadata_list_table(RzTable *table, const char *k, const char *v) {
+	if (RZ_STR_ISEMPTY(v) && (is_keyword_hash(k) || is_keyword_date(k))) {
+		rz_table_add_rowf(table, "ss", k, "<auto filled>");
+	} else {
+		rz_table_add_rowf(table, "ss", k, v);
+	}
+	return true;
+}
+
+RZ_IPI RzCmdStatus yara_command_metadata_list_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
+	RzCmdStatus res = RZ_CMD_STATUS_OK;
+	switch (state->mode) {
+	case RZ_OUTPUT_MODE_STANDARD:
+		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_standard, NULL);
+		break;
+	case RZ_OUTPUT_MODE_QUIET:
+		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_quiet, NULL);
+		break;
+	case RZ_OUTPUT_MODE_JSON:
+		pj_o(state->d.pj);
+		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_json, state->d.pj);
+		pj_end(state->d.pj);
+		break;
+	case RZ_OUTPUT_MODE_TABLE:
+		rz_table_set_columnsf(state->d.t, "ss", "key", "value", NULL);
+		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_table, state->d.t);
+		break;
+	default:
+		rz_warn_if_reached();
+		res = RZ_CMD_STATUS_WRONG_ARGS;
+		break;
+	}
+	return res;
+}
+
+RZ_IPI RzCmdStatus yara_command_metadata_add_handler(RzCore *core, int argc, const char **argv) {
+	const char *value = NULL;
+	if (argc != 3) {
+		if (!is_keyword_hash(argv[1]) && !is_keyword_date(argv[1])) {
+			YARA_ERROR("missing value for key '%s'\n", argv[1]);
+			return RZ_CMD_STATUS_WRONG_ARGS;
+		}
+		value = "";
+	} else if (is_keyword_boolean(argv[2])) {
+		// ensure that value is valid for yaml
+		value = (!yara_stricmp(argv[2], YARA_KEYWORD_TRUE) ? YARA_KEYWORD_TRUE : YARA_KEYWORD_FALSE);
+	} else {
+		value = argv[2];
+	}
+	ht_pp_update(yara_metadata, argv[1], (void *)value);
+	return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus yara_command_metadata_remove_handler(RzCore *core, int argc, const char **argv) {
+	ht_pp_delete(yara_metadata, argv[1]);
+	return RZ_CMD_STATUS_OK;
+}
+
+/*
 RZ_IPI RzCmdStatus yara_command_main_handler(RzCore *core, int argc, const char **argv) {
 	const char *usage = ""
 			    "commands:\n"
@@ -647,11 +768,11 @@ RZ_IPI RzCmdStatus yara_command_main_handler(RzCore *core, int argc, const char 
 			    "\n"
 			    "usage examples:\n"
 			    "  to create a rule\n"
-			    "    yaras add rooted_00 @ str.rooted\n"
-			    "    yaras add shell_code 10 @ fcn.0x123+2\n"
-			    "    yaras add aes_sbox 256 @ 0x1234\n"
-			    "    yaras add mistake 256 @ 0xdeadbeef\n"
-			    "    yaras del mistake\n"
+			    "    yarasa rooted_00 @ str.rooted\n"
+			    "    yarasa shell_code 10 @ fcn.0x123+2\n"
+			    "    yarasa aes_sbox 256 @ 0x1234\n"
+			    "    yarasa mistake 256 @ 0xdeadbeef\n"
+			    "    yarasd yara.bytes.mistake\n"
 			    "    yarac bad_malware\n"
 			    "\n"
 			    "  to add metadata when creating a rule\n"
@@ -667,6 +788,7 @@ RZ_IPI RzCmdStatus yara_command_main_handler(RzCore *core, int argc, const char 
 	rz_cons_println(usage);
 	return RZ_CMD_STATUS_OK;
 }
+*/
 
 RZ_IPI bool yara_plugin_init(RzCore *core) {
 	yara_metadata = rz_yara_metadata_new();
@@ -685,13 +807,13 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 
 	rz_config_lock(cfg, false);
 	SETPREFS(RZ_YARA_CFG_TAGS, "", "yara rule tags to use in the rule tag location when generating rules (space separated).");
-	SETPREFS(RZ_YARA_CFG_EXTENSIONS, DEFAULT_YARA_EXT, "yara file extensions, comma separated (default " DEFAULT_YARA_EXT ").");
+	SETPREFS(RZ_YARA_CFG_EXTENSIONS, YARA_DEFAULT_EXT, "yara file extensions, comma separated (default " YARA_DEFAULT_EXT ").");
 	SETPREFS(RZ_YARA_CFG_DATE_FMT, "%Y-%m-%d", "yara metadata date format (uses strftime for formatting).");
 	SETPREFI(RZ_YARA_CFG_TIMEOUT, 5 * 60, "yara scanner timeout in seconds (default: 5mins).");
 	SETPREFB(RZ_YARA_CFG_FASTMODE, false, "yara scanner fast mode, skips multiple matches (default: false).");
 	rz_config_lock(cfg, true);
 
-	RzCmdDesc *yara_cd = rz_cmd_desc_group_new(rcmd, root_cd, "yara", yara_command_main_handler, &yara_command_main_help, &yara_command_grp_help);
+	RzCmdDesc *yara_cd = rz_cmd_desc_group_new(rcmd, root_cd, "yara", NULL, &yara_command_main_help, &yara_command_grp_help);
 	rz_return_val_if_fail(yara_cd, false);
 
 	RzCmdDesc *yara_create_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yarac", yara_command_create_handler, &yara_command_create_help);
@@ -705,12 +827,20 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 
 	// yara metadata group
 
-	RzCmdDesc *yara_metadata_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaram", yara_command_metadata_handler, &yara_command_metadata_help);
-	rz_return_val_if_fail(yara_metadata_cd, false);
+	int yaram_modes = RZ_OUTPUT_MODE_STANDARD | RZ_OUTPUT_MODE_QUIET | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_TABLE;
+	RzCmdDesc *yara_meta_cd = rz_cmd_desc_group_state_new(rcmd, yara_cd, "yaram", yaram_modes, yara_command_metadata_list_handler, &yara_command_metadata_list_help, &yara_command_metadata_grp_help);
+	rz_return_val_if_fail(yara_meta_cd, false);
+
+	RzCmdDesc *yara_meta_add_cd = rz_cmd_desc_argv_new(rcmd, yara_meta_cd, "yarama", yara_command_metadata_add_handler, &yara_command_metadata_add_help);
+	rz_return_val_if_fail(yara_meta_add_cd, false);
+
+	RzCmdDesc *yara_meta_remove_cd = rz_cmd_desc_argv_new(rcmd, yara_meta_cd, "yaramr", yara_command_metadata_remove_handler, &yara_command_metadata_remove_help);
+	rz_return_val_if_fail(yara_meta_remove_cd, false);
 
 	// yara flags group
 
-	RzCmdDesc *yara_flag_cd = rz_cmd_desc_group_new(rcmd, yara_cd, "yaras", yara_command_flag_list_handler, &yara_command_flag_list_help, &yara_command_flag_grp_help);
+	int yaras_modes = RZ_OUTPUT_MODE_STANDARD | RZ_OUTPUT_MODE_QUIET | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_TABLE;
+	RzCmdDesc *yara_flag_cd = rz_cmd_desc_group_state_new(rcmd, yara_cd, "yaras", yaras_modes, yara_command_flag_list_handler, &yara_command_flag_list_help, &yara_command_flag_grp_help);
 	rz_return_val_if_fail(yara_flag_cd, false);
 
 	RzCmdDesc *yara_flag_add_cd = rz_cmd_desc_group_new(rcmd, yara_flag_cd, "yarasa", yara_command_flag_add_auto_handler, &yara_command_flag_add_auto_help, &yara_command_flag_add_grp_help);

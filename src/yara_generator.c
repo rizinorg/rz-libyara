@@ -47,15 +47,6 @@ RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata) {
 	ht_pp_free(metadata);
 }
 
-static inline bool is_hash(const char *key) {
-	return !rz_str_casecmp(key, "md5") ||
-		!rz_str_casecmp(key, "sha1") ||
-		!rz_str_casecmp(key, "sha2") || // alias for sha256
-		!rz_str_casecmp(key, "sha256") ||
-		!rz_str_casecmp(key, "crc32") ||
-		!rz_str_casecmp(key, "entropy");
-}
-
 static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
 	ut64 limit = rz_config_get_i(cd->core->config, "bin.hashlimit");
 	RzBinFile *bf = rz_bin_cur(cd->core->bin);
@@ -64,18 +55,18 @@ static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
 		return;
 	}
 	const char *algo = key;
-	if (!rz_str_casecmp(algo, "sha2")) {
-		algo = "sha256";
+	if (!yara_stricmp(algo, YARA_KEYWORD_HASH_SHA2)) {
+		algo = YARA_KEYWORD_HASH_SHA256;
 	}
 
 	RzList *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
 	RzBinFileHash *h = NULL;
 	RzListIter *it = NULL;
 	rz_list_foreach (hashes, it, h) {
-		if (rz_str_casecmp(algo, h->type)) {
+		if (yara_stricmp(algo, h->type)) {
 			continue;
 		}
-		if (!strncmp(h->type, "entropy", strlen("entropy"))) {
+		if (!strncmp(h->type, YARA_KEYWORD_HASH_ENTROPY, strlen(YARA_KEYWORD_HASH_ENTROPY))) {
 			// entropy and entropy_fract are floats
 			rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", key, h->hex);
 		} else {
@@ -84,10 +75,6 @@ static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
 		break;
 	}
 	rz_list_free(hashes);
-}
-
-static inline bool is_date_timestamp(const char *key) {
-	return !strcmp(key, "date") || !strcmp(key, "timestamp");
 }
 
 static inline void add_metadata_timestamp(YaraCbData *cd, const char *key) {
@@ -103,13 +90,19 @@ static inline void add_metadata_timestamp(YaraCbData *cd, const char *key) {
 	rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", key, buffer);
 }
 
+static inline bool is_value_boolean_or_numeric(const char *value) {
+	return !strcmp(value, YARA_KEYWORD_TRUE) ||
+		!strcmp(value, YARA_KEYWORD_FALSE) ||
+		rz_is_valid_input_num_value(NULL, value);
+}
+
 static bool add_metadata(YaraCbData *cd, const char *k, const char *v) {
-	if (!strcmp(v, "true") || !strcmp(v, "false") || rz_is_valid_input_num_value(NULL, v)) {
+	if (is_value_boolean_or_numeric(v)) {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = %s\n", k, v);
-	} else if (RZ_STR_ISEMPTY(v) && is_date_timestamp(k)) {
-		add_metadata_timestamp(cd, k);
-	} else if (RZ_STR_ISEMPTY(v) && is_hash(k)) {
+	} else if (RZ_STR_ISEMPTY(v) && is_keyword_hash(k)) {
 		add_metadata_file_hash(cd, k);
+	} else if (RZ_STR_ISEMPTY(v) && is_keyword_date(k)) {
+		add_metadata_timestamp(cd, k);
 	} else {
 		rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, v);
 	}

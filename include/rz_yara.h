@@ -10,6 +10,12 @@
 extern "C" {
 #endif
 
+#define RZ_YARA_CFG_TAGS       "yara.tags"
+#define RZ_YARA_CFG_EXTENSIONS "yara.extensions"
+#define RZ_YARA_CFG_DATE_FMT   "yara.date.format"
+#define RZ_YARA_CFG_TIMEOUT    "yara.timeout"
+#define RZ_YARA_CFG_FASTMODE   "yara.fastmode"
+
 #define RZ_YARA_FLAG_SPACE_MATCH       "yara.match"
 #define RZ_YARA_FLAG_SPACE_RULE        "yara.rule"
 #define RZ_YARA_FLAG_SPACE_RULE_STRING RZ_YARA_FLAG_SPACE_RULE ".str"
