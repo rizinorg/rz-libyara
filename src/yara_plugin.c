@@ -34,9 +34,9 @@ static const RzCmdDescDetailEntry yara_command_grp_complete_create_example[] = {
 
 static const RzCmdDescDetailEntry yara_command_grp_complete_parse_example[] = {
 	{ .text = "e ", .arg_str = RZ_YARA_CFG_EXTENSIONS "=\".yar,.yara,.rule\"", .comment = "Sets the yara file extensions (default: " YARA_CFG_EXTENSIONS_DFLT ")" },
-	{ .text = "yaral ", .arg_str = "/path/to/my/rule.yara", .comment = "Loads a *.yara or *.yar and sets the flags of each match" },
-	{ .text = "yarad ", .arg_str = "/path/to/my/rules/", .comment = "Loads all *.yara or *.yar rules from a folder and sets the flags of each match" },
-	{ .text = "f ", .arg_str = "~" RZ_YARA_FLAG_SPACE_MATCH, .comment = "Shows all the matches of the file" },
+	{ .text = "yaral ", .arg_str = "/path/to/my/rule.yara", .comment = "Loads a *.yara or *.yar, applies the rules and sets the flags of each match" },
+	{ .text = "yarad ", .arg_str = "/path/to/my/rules/", .comment = "Loads all *.yara or *.yar rules from a folder, applies the rules and sets the flags of each match" },
+	{ .text = "yaraM ", .arg_str = NULL, .comment = "Shows all the matches of the file" },
 	{ .text = "px ", .arg_str = "@ yara.match.pa.malware_payload_1234 @e:io.va=false", .comment = "Shows bytes of 'malware' rule & matched 'payload' string on physical address '1234'" },
 	{ .text = "px ", .arg_str = "@ yara.match.va.aes_sbox_1234 @e:io.va=true", .comment = "Shows bytes of 'aes' rule & matched 'sbox' string on virtual address '1234'" },
 	{ 0 },
@@ -177,6 +177,16 @@ static const RzCmdDescHelp yara_command_load_help = {
 	.summary = "Parse a .yar/.yara file and applies the rules",
 	.details = yara_command_parse_details,
 	.args = yara_command_load_args,
+};
+
+static const RzCmdDescArg yara_command_matches_args[] = {
+	{ 0 },
+};
+
+static const RzCmdDescHelp yara_command_matches_help = {
+	.summary = "Lists all the matches found when a .yar/.yara file is applied",
+	.details = yara_command_parse_details,
+	.args = yara_command_matches_args,
 };
 
 static const RzCmdDescArg yara_command_folder_args[] = {
@@ -432,7 +442,7 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 	rz_list_foreach (matches, it, ym) {
 		yara_add_match_flag(core, ym);
 	}
-	rz_cons_printf("%u matches (check f~" RZ_YARA_FLAG_PREFIX_MATCH ")\n", rz_list_length(matches));
+	rz_cons_printf("%u matches (check yaraM)\n", rz_list_length(matches));
 	rz_list_free(matches);
 
 	return matches ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -535,7 +545,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	rz_list_foreach (list, it, ym) {
 		yara_add_match_flag(core, ym);
 	}
-	rz_cons_printf("%u matches (check f~" RZ_YARA_FLAG_PREFIX_MATCH ")\n", rz_list_length(list));
+	rz_cons_printf("%u matches (check yaraM)\n", rz_list_length(list));
 	rz_list_free(list);
 
 	return list ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -595,6 +605,32 @@ RZ_IPI RzCmdStatus yara_command_flag_list_handler(RzCore *core, int argc, const 
 	case RZ_OUTPUT_MODE_TABLE:
 		rz_table_set_columnsf(state->d.t, "Xxs", "offset", "size", "name", NULL);
 		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_table, state->d.t);
+		break;
+	default:
+		rz_warn_if_reached();
+		res = RZ_CMD_STATUS_WRONG_ARGS;
+		break;
+	}
+	return res;
+}
+
+RZ_IPI RzCmdStatus yara_command_matches_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
+	RzCmdStatus res = RZ_CMD_STATUS_OK;
+	switch (state->mode) {
+	case RZ_OUTPUT_MODE_STANDARD:
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_MATCH, (RzFlagItemCb)yara_flag_list_standard, NULL);
+		break;
+	case RZ_OUTPUT_MODE_QUIET:
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_MATCH, (RzFlagItemCb)yara_flag_list_quiet, NULL);
+		break;
+	case RZ_OUTPUT_MODE_JSON:
+		pj_a(state->d.pj);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_MATCH, (RzFlagItemCb)yara_flag_list_json, state->d.pj);
+		pj_end(state->d.pj);
+		break;
+	case RZ_OUTPUT_MODE_TABLE:
+		rz_table_set_columnsf(state->d.t, "Xxs", "offset", "size", "name", NULL);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_MATCH, (RzFlagItemCb)yara_flag_list_table, state->d.t);
 		break;
 	default:
 		rz_warn_if_reached();
@@ -915,6 +951,10 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 
 	RzCmdDesc *yara_load_cd = rz_cmd_desc_argv_new(rcmd, yara_cd, "yaral", yara_command_load_handler, &yara_command_load_help);
 	rz_return_val_if_fail(yara_load_cd, false);
+
+	int yaraM_modes = RZ_OUTPUT_MODE_STANDARD | RZ_OUTPUT_MODE_QUIET | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_TABLE;
+	RzCmdDesc *yara_matches_cd = rz_cmd_desc_argv_state_new(rcmd, yara_cd, "yaraM", yaraM_modes, yara_command_matches_handler, &yara_command_matches_help);
+	rz_return_val_if_fail(yara_matches_cd, false);
 
 	// yara metadata group
 
