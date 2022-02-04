@@ -104,7 +104,9 @@ static bool add_metadata(YaraCbData *cd, const char *k, const char *v) {
 	} else if (RZ_STR_ISEMPTY(v) && is_keyword_date(k)) {
 		add_metadata_timestamp(cd, k);
 	} else {
-		rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, v);
+		char *ek = rz_str_escape_utf8_for_json(v, -1);
+		rz_strbuf_appendf(cd->sb, "\t\t%s = \"%s\"\n", k, ek);
+		free(ek);
 	}
 	return true;
 }
