@@ -7,7 +7,6 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 add_library(cutter_yara_plugin MODULE
-    ../include/rz_yara.h
     YaraWidget.ui
     YaraAddMetaDialog.ui
     YaraAddDialog.ui
