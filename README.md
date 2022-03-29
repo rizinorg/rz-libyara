@@ -2,7 +2,11 @@
 
 Rizin libyara wrapper for creating, parsing and applying YARA rules and Cutter native plugin.
 
-![Screenshot](https://raw.githubusercontent.com/rizinorg/rz-libyara/main/.images/cutter.png)
+# Screenshots
+
+![Screenshot1](https://raw.githubusercontent.com/rizinorg/rz-libyara/main/.images/rizin.png)
+![Screenshot2](https://raw.githubusercontent.com/rizinorg/rz-libyara/main/.images/cutter.png)
+![Screenshot3](https://raw.githubusercontent.com/rizinorg/rz-libyara/main/.images/rule.png)
 
 # Rizin Plugin
 ## Install system wide plugin folder
