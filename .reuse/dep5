@@ -7,26 +7,22 @@ Files: .github/**
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: .clang-format
+Files: cutter-plugin/*.ui
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: .gitignore
+Files: cutter-plugin/CMakeLists.txt
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: .gitmodules
+Files: .gitmodules .gitignore .clang-format
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: meson.build
+Files: meson_options.txt meson.build 
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: meson_options.txt
-Copyright: 2022 RizinOrg <info@rizin.re>
-License: LGPL-3.0-only
-
-Files: *.md
+Files: *.md .images/*.png
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
