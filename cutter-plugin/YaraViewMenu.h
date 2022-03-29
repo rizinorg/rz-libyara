@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 RizinOrg <info@rizin.re>
+// SPDX-FileCopyrightText: 2022 deroad <wargio@libero.it>
+// SPDX-License-Identifier: LGPL-3.0-only
+
 #ifndef YARA_VIEW_MENU_H
 #define YARA_VIEW_MENU_H
 

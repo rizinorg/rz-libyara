@@ -10,6 +10,10 @@
 #include "YaraAddDialog.h"
 
 #include <common/TempConfig.h>
+// SPDX-FileCopyrightText: 2022 RizinOrg <info@rizin.re>
+// SPDX-FileCopyrightText: 2022 deroad <wargio@libero.it>
+// SPDX-License-Identifier: LGPL-3.0-only
+
 #include <common/Configuration.h>
 #include <MainWindow.h>
 
