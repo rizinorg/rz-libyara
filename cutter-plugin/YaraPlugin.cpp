@@ -21,13 +21,8 @@ void YaraPlugin::setupInterface(MainWindow *main)
     yaraDock = new YaraWidget(main);
     main->addPluginDockWidget(yaraDock);
 
-    //QMenuBar *menuBar = qobject_cast<QMenuBar*>(main->getMenuByType(MainWindow::MenuType::File)->parent());
-    //QMenu *menu = menuBar->addMenu(tr("Yara"));
     QMenu *menuFile = main->getMenuByType(MainWindow::MenuType::File);
-
-    auto entry = menuFile->actions().at(5);
-    QMenu *menu = new QMenu(tr("Yara"));
-    entry = menuFile->insertMenu(entry, menu);
+    auto entry = menuFile->addMenu(tr("Yara"));
     menuFile->insertSeparator(entry);
 
     QAction *actionLoadYaraFile = menu->addAction(tr("Apply Yara Rule From File"));
@@ -52,7 +47,7 @@ void YaraPlugin::onActionAddYaraString()
 void YaraPlugin::onActionLoadYaraFile()
 {
     QFileDialog dialog(mainWindow);
-    dialog.setWindowTitle(tr("Load Yara Rule From File"));
+    dialog.setWindowTitle(tr("Apply Yara Rule From File"));
 
     if (!dialog.exec()) {
         return;
@@ -60,7 +55,7 @@ void YaraPlugin::onActionLoadYaraFile()
 
     const QString &yarafile = QDir::toNativeSeparators(dialog.selectedFiles().first());
     if (!yarafile.isEmpty()) {
-        Core()->cmd("yaral " + yarafile);
+        Core()->cmd("yaral '" + yarafile + "'");
         yaraDock->switchToMatches();
         emit Core()->flagsChanged();
     }
@@ -72,7 +67,7 @@ void YaraPlugin::onActionLoadYaraFolder()
                                                         QFileDialog::ShowDirsOnly
                                                                 | QFileDialog::DontResolveSymlinks);
     if (!yaradir.isEmpty()) {
-        Core()->cmd("yarad " + yaradir);
+        Core()->cmd("yarad '" + yaradir + "'");
         yaraDock->switchToMatches();
         emit Core()->flagsChanged();
     }
