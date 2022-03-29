@@ -26,7 +26,8 @@ void YaraPlugin::setupInterface(MainWindow *main)
     main->addPluginDockWidget(yaraDock);
 
     QMenu *menuFile = main->getMenuByType(MainWindow::MenuType::File);
-    auto entry = menuFile->addMenu(tr("Yara"));
+    QMenu *menu = new QMenu(tr("Apply Yara Rules..."));
+    auto entry = menuFile->addMenu(menu);
     menuFile->insertSeparator(entry);
 
     QAction *actionLoadYaraFile = menu->addAction(tr("Apply Yara Rule From File"));
