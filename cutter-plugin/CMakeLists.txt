@@ -8,6 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 add_library(cutter_yara_plugin MODULE
+    ../include/rz_yara.h
     YaraWidget.ui
     YaraAddMetaDialog.ui
     YaraAddDialog.ui
@@ -24,9 +25,9 @@ add_library(cutter_yara_plugin MODULE
     YaraSyntax.h
     YaraAddDialog.h
     YaraDescription.h
-   )
+)
 
+find_library(RzYara NAMES rz_yara HINTS "${RIZIN_INSTALL_PLUGDIR}")
 find_package(Cutter REQUIRED)
-link_directories("${RIZIN_INSTALL_PLUGDIR}")
-target_link_libraries(cutter_yara_plugin PRIVATE Cutter::Cutter)
+target_link_libraries(cutter_yara_plugin PRIVATE Cutter::Cutter "${RzYara}")
 install(TARGETS cutter_yara_plugin DESTINATION "${CUTTER_INSTALL_PLUGDIR}")

@@ -35,7 +35,8 @@ void YaraPlugin::setupInterface(MainWindow *main)
     connect(actionLoadYaraFile, &QAction::triggered, this, &YaraPlugin::onActionLoadYaraFile);
     connect(actionLoadYaraFolder, &QAction::triggered, this, &YaraPlugin::onActionLoadYaraFolder);
 
-    QMenu *disassemblyContextMenu = main->getContextMenuExtensions(MainWindow::ContextMenuType::Disassembly);
+    QMenu *disassemblyContextMenu =
+            main->getContextMenuExtensions(MainWindow::ContextMenuType::Disassembly);
     actionAddYaraString = disassemblyContextMenu->addAction(tr("Add Yara String"));
     connect(actionAddYaraString, &QAction::triggered, this, &YaraPlugin::onActionAddYaraString);
 }

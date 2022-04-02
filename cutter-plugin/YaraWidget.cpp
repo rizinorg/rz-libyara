@@ -303,14 +303,16 @@ static inline QList<YaraDescription> toYaraDescriptionList(QJsonArray &array)
     return list;
 }
 
-static QJsonArray toJsonArray(QString &string) {
+static QJsonArray toJsonArray(QString &string)
+{
     QTextCodec *codec = QTextCodec::codecForName("UTF-8");
     QByteArray doc = codec->fromUnicode(string);
     QJsonDocument jdoc = QJsonDocument::fromJson(doc);
     return jdoc.array();
 }
 
-static QJsonObject toJsonObject(QString &string) {
+static QJsonObject toJsonObject(QString &string)
+{
     QTextCodec *codec = QTextCodec::codecForName("UTF-8");
     QByteArray doc = codec->fromUnicode(string);
     QJsonDocument jdoc = QJsonDocument::fromJson(doc);
