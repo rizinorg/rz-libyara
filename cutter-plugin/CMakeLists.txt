@@ -6,27 +6,33 @@ set(RIZIN_INSTALL_PLUGDIR "lib/rizin/plugins" CACHE STRING "Directory where to f
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_library(cutter_yara_plugin MODULE
-    YaraWidget.ui
-    YaraAddMetaDialog.ui
-    YaraAddDialog.ui
-    YaraPlugin.h
-    YaraPlugin.cpp
-    YaraViewMenu.cpp
-    YaraWidget.cpp
-    YaraAddMetaDialog.cpp
-    YaraSyntax.cpp
     YaraAddDialog.cpp
-    YaraViewMenu.h
-    YaraWidget.h
-    YaraAddMetaDialog.h
-    YaraSyntax.h
     YaraAddDialog.h
+    YaraAddDialog.ui
+    YaraAddMetaDialog.cpp
+    YaraAddMetaDialog.h
+    YaraAddMetaDialog.ui
     YaraDescription.h
-   )
+    YaraPlugin.cpp
+    YaraPlugin.h
+    YaraSyntax.cpp
+    YaraSyntax.h
+    YaraTextEditor.cpp
+    YaraTextEditor.h
+    YaraTextEditor.ui
+    YaraViewMenu.cpp
+    YaraViewMenu.h
+    YaraWidget.cpp
+    YaraWidget.h
+    YaraWidget.ui
+)
+
+find_library(RzYara NAMES rz_yara HINTS "${RIZIN_INSTALL_PLUGDIR}")
+include_directories("../include")
 
 find_package(Cutter REQUIRED)
-link_directories("${RIZIN_INSTALL_PLUGDIR}")
-target_link_libraries(cutter_yara_plugin PRIVATE Cutter::Cutter)
+target_link_libraries(cutter_yara_plugin PRIVATE Cutter::Cutter "${RzYara}")
 install(TARGETS cutter_yara_plugin DESTINATION "${CUTTER_INSTALL_PLUGDIR}")

@@ -16,6 +16,7 @@
 #include "ui_YaraWidget.h"
 #include "YaraViewMenu.h"
 #include "YaraSyntax.h"
+#include "YaraTextEditor.h"
 
 class MainWindow;
 class QTreeWidget;
@@ -103,7 +104,7 @@ class YaraWidget : public CutterDockWidget
     Q_OBJECT
 
 public:
-    enum YaraViewMode { StringsMode = 0, MatchesMode, RuleMode, MetadataMode, ModeCount };
+    enum YaraViewMode { MatchesMode = 0, StringsMode, MetadataMode, RuleMode, ModeCount };
     explicit YaraWidget(MainWindow *main);
     virtual ~YaraWidget() {};
 
@@ -118,10 +119,17 @@ private:
     std::unique_ptr<Ui::YaraWidget> ui;
     std::unique_ptr<QSyntaxHighlighter> syntax;
 
-    YaraModel *model;
-    YaraProxyModel *proxyModel;
+    // Matches
+    YaraModel *matchesModel;
+    YaraProxyModel *matchesProxyModel;
+    QList<YaraDescription> matches;
+
+    // Strings
+    YaraModel *stringsModel;
+    YaraProxyModel *stringsProxyModel;
     QList<YaraDescription> strings;
 
+    // Metadata
     MetadataModel *metaModel;
     MetadataProxyModel *metaProxyModel;
     QList<MetadataDescription> metadata;

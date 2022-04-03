@@ -35,9 +35,14 @@ void YaraPlugin::setupInterface(MainWindow *main)
     connect(actionLoadYaraFile, &QAction::triggered, this, &YaraPlugin::onActionLoadYaraFile);
     connect(actionLoadYaraFolder, &QAction::triggered, this, &YaraPlugin::onActionLoadYaraFolder);
 
-    QMenu *disassemblyContextMenu = main->getContextMenuExtensions(MainWindow::ContextMenuType::Disassembly);
-    actionAddYaraString = disassemblyContextMenu->addAction(tr("Add Yara String"));
+    menu = main->getContextMenuExtensions(MainWindow::ContextMenuType::Disassembly);
+    QAction *actionAddYaraString = menu->addAction(tr("Add Yara String"));
     connect(actionAddYaraString, &QAction::triggered, this, &YaraPlugin::onActionAddYaraString);
+
+    // Currently is not possible to get the correct address from an "Addressable" ContextMenuType
+    // menu = main->getContextMenuExtensions(MainWindow::ContextMenuType::Addressable);
+    // actionAddYaraString = menu->addAction(tr("Add Yara String"));
+    // connect(actionAddYaraString, &QAction::triggered, this, &YaraPlugin::onActionAddYaraString);
 }
 
 void YaraPlugin::onActionAddYaraString()
