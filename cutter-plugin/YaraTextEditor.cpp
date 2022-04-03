@@ -182,8 +182,8 @@ void YaraTextEditor::highlightCurrentLine()
 {
     QList<QTextEdit::ExtraSelection> extraSelections;
     bool isDark = Config()->windowColorIsDark();
-    QColor warningLine = isDark ? QColor(107, 68, 0) : QColor(245, 206, 66);
-    QColor errorLine = isDark ? QColor(107, 0, 0) : QColor(255, 77, 77);
+    QColor warningLine = isDark ? QColor(107, 68, 0) : QColor(255, 238, 125);
+    QColor errorLine = isDark ? QColor(107, 0, 0) : QColor(255, 134, 125);
 
     for (auto error : errors) {
         QTextEdit::ExtraSelection selection;

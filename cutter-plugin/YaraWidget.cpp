@@ -212,77 +212,61 @@ YaraWidget::YaraWidget(MainWindow *main)
 {
     ui->setupUi(this);
 
+    matchesModel = new YaraModel(&matches, this);
+    matchesProxyModel = new YaraProxyModel(matchesModel, this);
+    ui->yaraMatchView->setModel(matchesProxyModel);
+    ui->yaraMatchView->sortByColumn(YaraModel::OffsetColumn, Qt::AscendingOrder);
+    ui->yaraMatchView->resizeColumnToContents(0);
+    ui->yaraMatchView->resizeColumnToContents(1);
+    qhelpers::setVerticalScrollMode(ui->yaraMatchView);
+
+    this->connect(ui->yaraMatchView->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                  &YaraWidget::onSelectedItemChanged);
+
+    stringsModel = new YaraModel(&strings, this);
+    stringsProxyModel = new YaraProxyModel(stringsModel, this);
+    ui->yaraStringsView->setModel(stringsProxyModel);
+    ui->yaraStringsView->sortByColumn(YaraModel::OffsetColumn, Qt::AscendingOrder);
+    ui->yaraStringsView->resizeColumnToContents(0);
+    ui->yaraStringsView->resizeColumnToContents(1);
+    ui->yaraStringsView->resizeColumnToContents(2);
+    qhelpers::setVerticalScrollMode(ui->yaraStringsView);
+
+    this->connect(ui->yaraStringsView->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                  &YaraWidget::onSelectedItemChanged);
+
     metaModel = new MetadataModel(&metadata, this);
     metaProxyModel = new MetadataProxyModel(metaModel, this);
+    ui->yaraMetadataView->setModel(metaProxyModel);
+    ui->yaraMetadataView->resizeColumnToContents(0);
+    ui->yaraMetadataView->resizeColumnToContents(1);
+    ui->yaraMetadataView->resizeColumnToContents(2);
+    qhelpers::setVerticalScrollMode(ui->yaraMetadataView);
 
-    model = new YaraModel(&strings, this);
-    proxyModel = new YaraProxyModel(model, this);
-    ui->yaraTreeView->setModel(proxyModel);
-    ui->yaraTreeView->sortByColumn(YaraModel::OffsetColumn, Qt::AscendingOrder);
+    this->connect(ui->yaraStringsView->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                  &YaraWidget::onSelectedItemChanged);
 
-    ui->yaraRuleEditor->setVisible(false);
     ui->yaraRuleEditor->setTabStopDistance(40);
     this->syntax.reset(new YaraSyntax(ui->yaraRuleEditor->document()));
 
-    ui->yaraSelector->addItem(tr("Strings"), "");
-    ui->yaraSelector->addItem(tr("Matches"), "");
-    ui->yaraSelector->addItem(tr("Rule"), "");
-    ui->yaraSelector->addItem(tr("Metadata"), "");
-    ui->yaraSelector->setCurrentIndex(StringsMode);
-
-    setScrollMode();
+    ui->yaraTabWidget->setCurrentIndex(StringsMode);
 
     this->connect(this, &QWidget::customContextMenuRequested, this,
                   &YaraWidget::showItemContextMenu);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    this->connect(ui->yaraTreeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
-                  &YaraWidget::onSelectedItemChanged);
-
     this->connect(Core(), &CutterCore::refreshAll, this, &YaraWidget::reloadWidget);
     this->connect(Core(), &CutterCore::flagsChanged, this, &YaraWidget::reloadWidget);
-
-    this->connect(ui->yaraSelector,
-                  static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
-                  &YaraWidget::reloadWidget);
 
     this->addActions(this->blockMenu->actions());
 }
 
 void YaraWidget::reloadWidget()
 {
-    int index = ui->yaraSelector->currentIndex();
-    switch (index) {
-    default:
-        ui->yaraSelector->setCurrentIndex(StringsMode);
-        /* fallthru */
-    case YaraViewMode::StringsMode:
-        ui->yaraTreeView->setVisible(true);
-        ui->yaraRuleEditor->setVisible(false);
-        ui->yaraTreeView->setModel(proxyModel);
-        ui->yaraTreeView->sortByColumn(YaraModel::OffsetColumn, Qt::AscendingOrder);
-        refreshStrings();
-        break;
-    case YaraViewMode::MatchesMode:
-        ui->yaraTreeView->setVisible(true);
-        ui->yaraRuleEditor->setVisible(false);
-        ui->yaraTreeView->setModel(proxyModel);
-        ui->yaraTreeView->sortByColumn(YaraModel::OffsetColumn, Qt::AscendingOrder);
-        refreshMatches();
-        break;
-    case YaraViewMode::RuleMode:
-        ui->yaraTreeView->setVisible(false);
-        ui->yaraRuleEditor->setVisible(true);
-        refreshRule();
-        break;
-    case YaraViewMode::MetadataMode:
-        ui->yaraTreeView->setVisible(true);
-        ui->yaraRuleEditor->setVisible(false);
-        ui->yaraTreeView->setModel(metaProxyModel);
-        ui->yaraTreeView->sortByColumn(MetadataModel::NameColumn, Qt::AscendingOrder);
-        refreshMetadata();
-        break;
-    }
+    refreshStrings();
+    refreshMatches();
+    refreshRule();
+    refreshMetadata();
 }
 
 static inline QList<YaraDescription> toYaraDescriptionList(QJsonArray &array)
@@ -321,28 +305,20 @@ static QJsonObject toJsonObject(QString &string)
 
 void YaraWidget::refreshStrings()
 {
-    model->beginResetModel();
+    stringsModel->beginResetModel();
     QString res = Core()->cmd("yarasj");
     QJsonArray array = toJsonArray(res);
     strings = toYaraDescriptionList(array);
-    model->endResetModel();
-
-    ui->yaraTreeView->resizeColumnToContents(0);
-    ui->yaraTreeView->resizeColumnToContents(1);
-    ui->yaraTreeView->resizeColumnToContents(2);
+    stringsModel->endResetModel();
 }
 
 void YaraWidget::refreshMatches()
 {
-    model->beginResetModel();
+    matchesModel->beginResetModel();
     QString res = Core()->cmd("yaraMj");
     QJsonArray array = toJsonArray(res);
-    strings = toYaraDescriptionList(array);
-    model->endResetModel();
-
-    ui->yaraTreeView->resizeColumnToContents(0);
-    ui->yaraTreeView->resizeColumnToContents(1);
-    ui->yaraTreeView->resizeColumnToContents(2);
+    matches = toYaraDescriptionList(array);
+    matchesModel->endResetModel();
 }
 
 void YaraWidget::refreshRule()
@@ -375,33 +351,17 @@ void YaraWidget::refreshMetadata()
         metadata << desc;
     }
     metaModel->endResetModel();
-
-    ui->yaraTreeView->resizeColumnToContents(0);
-    ui->yaraTreeView->resizeColumnToContents(1);
 }
 
 void YaraWidget::switchToMatches()
 {
-    ui->yaraSelector->setCurrentIndex(MatchesMode);
-}
-
-void YaraWidget::setScrollMode()
-{
-    qhelpers::setVerticalScrollMode(ui->yaraTreeView);
+    ui->yaraTabWidget->setCurrentIndex(MatchesMode);
 }
 
 void YaraWidget::onSelectedItemChanged(const QModelIndex &index)
 {
-    int mode = ui->yaraSelector->currentIndex();
-    if (index.isValid()) {
-        if (mode == YaraViewMode::MetadataMode) {
-            const MetadataDescription &entry = metadata.at(index.row());
-            blockMenu->setMetaTarget(entry);
-        } else {
-            const YaraDescription &entry = strings.at(index.row());
-            blockMenu->setYaraTarget(entry, mode == YaraViewMode::StringsMode);
-        }
-    } else {
+    int mode = ui->yaraTabWidget->currentIndex();
+    if (!index.isValid()) {
         blockMenu->clearTarget();
         if (mode == YaraViewMode::MetadataMode) {
             MetadataDescription entry;
@@ -410,30 +370,57 @@ void YaraWidget::onSelectedItemChanged(const QModelIndex &index)
             YaraDescription entry;
             blockMenu->setYaraTarget(entry, mode == YaraViewMode::StringsMode);
         }
+        return;
+    }
+
+    switch (mode) {
+    case YaraViewMode::StringsMode: {
+        const YaraDescription &sentry = strings.at(index.row());
+        blockMenu->setYaraTarget(sentry, true);
+    } break;
+    case YaraViewMode::MatchesMode: {
+        const YaraDescription &mentry = matches.at(index.row());
+        blockMenu->setYaraTarget(mentry, false);
+    } break;
+    case YaraViewMode::RuleMode:
+        break;
+    case YaraViewMode::MetadataMode: {
+        const MetadataDescription &dentry = metadata.at(index.row());
+        blockMenu->setMetaTarget(dentry);
+    } break;
     }
 }
 
 void YaraWidget::showItemContextMenu(const QPoint &pt)
 {
     QModelIndex position;
-    int index = ui->yaraSelector->currentIndex();
+    int index = ui->yaraTabWidget->currentIndex();
     switch (index) {
     case YaraViewMode::StringsMode:
-    case YaraViewMode::MatchesMode:
-        position = ui->yaraTreeView->currentIndex();
+        position = ui->yaraStringsView->currentIndex();
         if (position.isValid()) {
             const YaraDescription &entry = strings.at(position.row());
-            blockMenu->setYaraTarget(entry, index == YaraViewMode::StringsMode);
+            blockMenu->setYaraTarget(entry, true);
         } else {
             YaraDescription entry;
-            blockMenu->setYaraTarget(entry, index == YaraViewMode::StringsMode);
+            blockMenu->setYaraTarget(entry, true);
+        }
+        blockMenu->exec(this->mapToGlobal(pt));
+    case YaraViewMode::MatchesMode:
+        position = ui->yaraMatchView->currentIndex();
+        if (position.isValid()) {
+            const YaraDescription &entry = matches.at(position.row());
+            blockMenu->setYaraTarget(entry, false);
+        } else {
+            YaraDescription entry;
+            blockMenu->setYaraTarget(entry, false);
         }
         blockMenu->exec(this->mapToGlobal(pt));
         break;
     case YaraViewMode::RuleMode:
         break;
     case YaraViewMode::MetadataMode:
-        position = ui->yaraTreeView->currentIndex();
+        position = ui->yaraMetadataView->currentIndex();
         if (position.isValid()) {
             const MetadataDescription &entry = metadata.at(position.row());
             blockMenu->setMetaTarget(entry);
