@@ -16,6 +16,7 @@
 #include "ui_YaraWidget.h"
 #include "YaraViewMenu.h"
 #include "YaraSyntax.h"
+#include "YaraTextEditor.h"
 
 class MainWindow;
 class QTreeWidget;

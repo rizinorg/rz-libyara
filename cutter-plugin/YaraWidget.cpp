@@ -362,7 +362,16 @@ void YaraWidget::refreshMetadata()
     foreach (const QString &key, json.keys()) {
         MetadataDescription desc;
         desc.name = key;
-        desc.value = YaraAddMetaDialog::isKeyword(key) ? tr("Autofill") : json[key].toString();
+        if (YaraAddMetaDialog::isKeyword(key)) {
+            desc.value = tr("Autofill");
+        } else if (json[key].isBool()) {
+            desc.value = json[key].toBool() ? "true" : "false";
+        } else if (json[key].isDouble()) {
+            double dbl = json[key].toDouble();
+            desc.value = QString::number(dbl);
+        } else {
+            desc.value = json[key].toString();
+        }
         metadata << desc;
     }
     metaModel->endResetModel();

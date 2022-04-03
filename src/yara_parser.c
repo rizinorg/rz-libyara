@@ -64,7 +64,7 @@ RZ_API RZ_OWN RzYaraRules *rz_yara_compiler_get_rules_and_free(RZ_NULLABLE RzYar
 	return rules;
 }
 
-RZ_API bool rz_yara_compiler_parse_string(RZ_NONNULL RzYaraCompiler *compiler, RZ_NONNULL char *string) {
+RZ_API bool rz_yara_compiler_parse_string(RZ_NONNULL RzYaraCompiler *compiler, RZ_NONNULL const char *string) {
 	rz_return_val_if_fail(compiler && RZ_STR_ISNOTEMPTY(string), false);
 	return yr_compiler_add_string(compiler, string, NULL) != ERROR_SUCCESS;
 }

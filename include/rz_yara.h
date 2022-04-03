@@ -48,7 +48,7 @@ RZ_API void rz_yara_rules_free(RZ_NULLABLE RzYaraRules *rules);
 RZ_API void rz_yara_rules_foreach(RZ_NONNULL RzYaraRules *rules, RZ_NONNULL RzYaraRulesCb callback, void *cb_data);
 
 RZ_API RZ_OWN RzYaraCompiler *rz_yara_compiler_new(RZ_NULLABLE RzYaraCompilerErrorCb callback, RZ_NULLABLE void *cb_data);
-RZ_API bool rz_yara_compiler_parse_string(RZ_NONNULL RzYaraCompiler *compiler, RZ_NONNULL char *string);
+RZ_API bool rz_yara_compiler_parse_string(RZ_NONNULL RzYaraCompiler *compiler, RZ_NONNULL const char *string);
 RZ_API bool rz_yara_compiler_parse_file(RZ_NONNULL RzYaraCompiler *compiler, RZ_NONNULL const char *filename);
 RZ_API void rz_yara_compiler_free(RZ_NULLABLE RzYaraCompiler *compiler);
 RZ_API RZ_OWN RzYaraRules *rz_yara_compiler_get_rules_and_free(RZ_NONNULL RzYaraCompiler *compiler);

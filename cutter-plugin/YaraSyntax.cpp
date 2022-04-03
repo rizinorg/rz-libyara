@@ -3,32 +3,52 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 #include "YaraSyntax.h"
+#include <common/Configuration.h>
+
+#define Config() (Configuration::instance())
+#define ConfigColor(x) Config()->getColor(x)
 
 YaraSyntax::YaraSyntax(QTextDocument *parent)
     : QSyntaxHighlighter(parent), commentStartExpression("/\\*"), commentEndExpression("\\*/")
 {
     HighlightingRule rule;
 
-    // yara variables names (first to be done.)
-    rule.pattern.setPattern("\\$?\\b[A-Za-z]([A-Za-z0-9_]+)?\\b[^\n]");
+    // yara keywords names (first to be done.)
+    rule.pattern.setPattern(
+            "\\b(all|and|any|ascii|at|contains|entrypoint|false|filesize|fullword|for|"
+            "global|in|import|include|int8|int16|int32|int8be|int16be|int32be|matches|nocase|"
+            "not|or|of|private|them|true|uint8|uint16|uint32|uint8be|uint16be|"
+            "uint32be|wide|xor)\\b");
     rule.format.clearBackground();
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Normal);
-    rule.format.setForeground(QColor(175, 122, 197));
+    rule.format.setForeground(ConfigColor("flow"));
     highlightingRules.append(rule);
 
-    rule.pattern.setPattern("\\brule\\b");
+    // yara special keyword
+    rule.pattern.setPattern("\\b(rule|meta|strings|condition)\\b");
     rule.format.clearBackground();
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Bold);
-    rule.format.setForeground(Qt::red);
+    rule.format.setForeground(ConfigColor("call"));
     highlightingRules.append(rule);
 
-    rule.pattern.setPattern("\\ball of them\\b");
+    // yara values names
+    rule.pattern.setPattern("\\$\\b[A-Za-z]([A-Za-z0-9_]+)?\\b");
     rule.format.clearBackground();
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Normal);
-    rule.format.setForeground(QColor(80, 200, 215));
+    rule.format.setForeground(ConfigColor("fname"));
+    highlightingRules.append(rule);
+
+    // bytes
+    rule.pattern.setPattern(
+            "(\\b[A-Fa-f0-9][A-Fa-f0-9]\\b|\\ \\?[A-Fa-f0-9]\\b|\\b[A-Fa-f0-9]\\?\\ |\\?\\?\\ )");
+    rule.format.clearBackground();
+    rule.format.clearForeground();
+    rule.format.setFontWeight(QFont::Normal);
+    rule.format.setFontItalic(false);
+    rule.format.setForeground(ConfigColor("graph.ujump"));
     highlightingRules.append(rule);
 
     // number/float
@@ -36,41 +56,7 @@ YaraSyntax::YaraSyntax(QTextDocument *parent)
     rule.format.clearBackground();
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Normal);
-    rule.format.setForeground(QColor(52, 152, 219));
-    highlightingRules.append(rule);
-
-    // true/false
-    rule.pattern.setPattern("\\btrue\\b$");
-    rule.format.clearBackground();
-    rule.format.clearForeground();
-    rule.format.setFontWeight(QFont::Normal);
-    rule.format.setForeground(QColor(52, 152, 219));
-    highlightingRules.append(rule);
-
-    rule.pattern.setPattern("\\bfalse\\b$");
-    rule.format.clearBackground();
-    rule.format.clearForeground();
-    rule.format.setFontWeight(QFont::Normal);
-    rule.format.setForeground(QColor(52, 152, 219));
-    highlightingRules.append(rule);
-
-    // yara rule section
-    rule.pattern.setPattern("\\b(meta|strings|condition)\\b:$");
-    rule.format.clearBackground();
-    rule.format.clearForeground();
-    rule.format.setFontWeight(QFont::Normal);
-    rule.format.setFontItalic(true);
-    rule.format.setForeground(QColor(199, 0, 57));
-    highlightingRules.append(rule);
-
-    // bytes
-    rule.pattern.setPattern(
-            "(\\b[A-F0-9][A-F0-9]\\b|\\ \\?[A-F0-9]\\b|\\b[A-F0-9]\\?\\ |\\?\\?\\ )");
-    rule.format.clearBackground();
-    rule.format.clearForeground();
-    rule.format.setFontWeight(QFont::Normal);
-    rule.format.setFontItalic(false);
-    rule.format.setForeground(QColor(241, 196, 15));
+    rule.format.setForeground(ConfigColor("graph.ujump"));
     highlightingRules.append(rule);
 
     // single-line comment
@@ -79,7 +65,7 @@ YaraSyntax::YaraSyntax(QTextDocument *parent)
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Normal);
     rule.format.setFontItalic(false);
-    rule.format.setForeground(Qt::gray);
+    rule.format.setForeground(ConfigColor("comment"));
     highlightingRules.append(rule);
 
     // quotation
@@ -88,10 +74,10 @@ YaraSyntax::YaraSyntax(QTextDocument *parent)
     rule.format.clearForeground();
     rule.format.setFontWeight(QFont::Normal);
     rule.format.setFontItalic(false);
-    rule.format.setForeground(QColor(46, 204, 113));
+    rule.format.setForeground(ConfigColor("gui.cflow"));
     highlightingRules.append(rule);
 
-    multiLineCommentFormat.setForeground(Qt::gray);
+    multiLineCommentFormat.setForeground(ConfigColor("comment"));
 }
 
 void YaraSyntax::highlightBlock(const QString &text)

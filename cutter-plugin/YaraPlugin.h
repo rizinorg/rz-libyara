@@ -29,8 +29,6 @@ private:
     void onActionLoadYaraFile();
     void onActionLoadYaraFolder();
 
-    QAction *actionAddYaraString;
-
     YaraWidget *yaraDock;
     MainWindow *mainWindow;
 };
