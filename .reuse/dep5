@@ -11,7 +11,7 @@ Files: cutter-plugin/*.ui
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: cutter-plugin/CMakeLists.txt
+Files: cutter-plugin/CMakeLists.txt cutter-plugin/.clang-format
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
