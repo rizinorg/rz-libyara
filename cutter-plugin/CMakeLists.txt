@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(cutter-yara-plugin)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 set(CUTTER_INSTALL_PLUGDIR "share/rizin/cutter/plugins/native" CACHE STRING "Directory to install Cutter plugin into")
 set(RIZIN_INSTALL_PLUGDIR "lib/rizin/plugins" CACHE STRING "Directory where to find librz_yara")
 
