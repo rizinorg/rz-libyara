@@ -5,6 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(CUTTER_INSTALL_PLUGDIR "share/rizin/cutter/plugins/native" CACHE STRING "Directory to install Cutter plugin into")
 set(RIZIN_INSTALL_PLUGDIR "lib/rizin/plugins" CACHE STRING "Directory where to find librz_yara")
+set(CUTTER_SOURCE_DIR CUTTER_SOURCE_DIR-NOTFOUND CACHE STRING "Root directory of Cutter source")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
