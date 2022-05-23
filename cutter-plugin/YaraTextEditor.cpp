@@ -55,10 +55,13 @@ void YaraTextEditor::onActionSaveYaraRule()
             errorLine += QString("\nline %1: %2").arg(error.line + 1).arg(error.message);
         }
     }
-    if (!errorLine.isEmpty()) {
-        QMessageBox::critical(nullptr, tr("Invalid Yara Rule"),
-                              tr("This Yara Rule failed to compile, therefore cannot be saved.\n%1")
-                                      .arg(errorLine));
+    if (!errorLine.isEmpty()
+        && QMessageBox::question(
+                   nullptr, tr("Invalid Yara Rule"),
+                   tr("This Yara Rule failed to compile, are you sure you want to save it ?\n%1")
+                           .arg(errorLine),
+                   QMessageBox::Yes | QMessageBox::No)
+                == QMessageBox::No) {
         return;
     }
 
