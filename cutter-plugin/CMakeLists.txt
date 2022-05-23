@@ -30,7 +30,7 @@ add_library(cutter_yara_plugin MODULE
     YaraWidget.ui
 )
 
-find_library(RzYara NAMES rz_yara HINTS "${RIZIN_INSTALL_PLUGDIR}")
+find_library(RzYara NAMES rz_yara PATHS "${RIZIN_INSTALL_PLUGDIR}")
 include_directories("../include")
 
 find_package(Cutter REQUIRED)
