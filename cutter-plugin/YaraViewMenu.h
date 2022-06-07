@@ -33,6 +33,7 @@ private:
     void onActionSeekAt();
     void onActionRemove();
     void onActionRemoveAll();
+    void onActionOpenHelp();
 
     QMenu *pluginMenu;
     QAction *pluginMenuAction;
@@ -48,6 +49,7 @@ protected:
     QAction *actionSeekAt;
     QAction *actionRemove;
     QAction *actionRemoveAll;
+    QAction *actionOpenHelp;
 
     YaraDescription target_yara;
     MetadataDescription target_meta;

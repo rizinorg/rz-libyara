@@ -64,6 +64,7 @@ private slots:
 
 private:
     void onActionSaveYaraRule();
+    void onActionOpenHelp();
     static void handleCompileErrors(bool is_warning, const char *file, int line,
                                     const RzYaraRule *rule, const char *message, void *user_data);
 

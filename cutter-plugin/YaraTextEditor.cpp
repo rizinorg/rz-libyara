@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 #include "YaraTextEditor.h"
+#include "YaraPlugin.h"
 
 #include <QScrollBar>
 #include <QTextBlock>
@@ -41,10 +42,18 @@ void YaraTextEditor::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu *menu = createStandardContextMenu();
     QAction *actionSaveYaraRule = menu->addAction(tr("Save Yara Rule to File"));
+    QAction *actionOpenHelp = menu->addAction(tr("Yara Help"));
     connect(actionSaveYaraRule, &QAction::triggered, this, &YaraTextEditor::onActionSaveYaraRule);
+    connect(actionOpenHelp, &QAction::triggered, this, &YaraTextEditor::onActionOpenHelp);
     menu->insertSeparator(actionSaveYaraRule);
+    menu->insertSeparator(actionOpenHelp);
     menu->exec(event->globalPos());
     delete menu;
+}
+
+void YaraTextEditor::onActionOpenHelp()
+{
+    YaraPlugin::openHelpDialog();
 }
 
 void YaraTextEditor::onActionSaveYaraRule()

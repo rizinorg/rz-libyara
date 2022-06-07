@@ -82,3 +82,30 @@ void YaraPlugin::onActionLoadYaraFolder()
         emit Core()->flagsChanged();
     }
 }
+
+void YaraPlugin::openHelpDialog()
+{
+    auto description =
+            tr("Hello, Welcome to Yara Help\n\n"
+               "How to use one or multiple Yara rules:\n"
+               " - Top Menu > File > Apply Yara Rule... > Apply Yara Rule From File\n"
+               " - Top Menu > File > Apply Yara Rule... > Apply All Yara Rules In Directory\n\n"
+               "How to see matches from loaded rules:\n"
+               " 1. Open the 'Yara' view\n"
+               " 2. Select the 'Matches' Tab\n"
+               " 3. Double click to seek at the matched location.\n"
+               "Some locations might not be visible due the match being outside the virtual "
+               "address space.\n\n"
+               "How to create a rule:\n"
+               " 1. Open the 'Disassembly' view.\n"
+               " 2. Left click on the Disassembly view.\n"
+               " 3. Menu > Plugins > Add Yara String.\n"
+               " 4. Select the type, give it a name and set the size (in bytes).\n"
+               " 5. Open the 'Yara' view and go to the Rule Tab.\n\n"
+               "How to add metadata to the rule:\n"
+               " 1. Open the 'Yara' view and go to the Metadata Tab.\n"
+               " 2. Left click > Add New Entry.\n"
+               " 3. Each entry is made of a keyword and value, but some can be automatically "
+               "filled.\n");
+    QMessageBox::information(nullptr, tr("Yara Help"), description);
+}

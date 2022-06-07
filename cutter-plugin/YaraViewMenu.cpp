@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 #include "YaraViewMenu.h"
+#include "YaraPlugin.h"
 #include <MainWindow.h>
 
 #include <QtCore>
@@ -20,12 +21,14 @@ YaraViewMenu::YaraViewMenu(QWidget *parent, MainWindow *mainWindow)
     actionSeekAt = new QAction(tr("Seek At"), this);
     actionRemove = new QAction(tr("Remove Entry"), this);
     actionRemoveAll = new QAction(tr("Remove All Entries"), this);
+    actionOpenHelp = new QAction(tr("Yara Help"), this);
 
     connect(actionAddNewMetadata, &QAction::triggered, this, &YaraViewMenu::onActionAddNewMetadata);
     connect(actionCopyName, &QAction::triggered, this, &YaraViewMenu::onActionCopyName);
     connect(actionSeekAt, &QAction::triggered, this, &YaraViewMenu::onActionSeekAt);
     connect(actionRemove, &QAction::triggered, this, &YaraViewMenu::onActionRemove);
     connect(actionRemoveAll, &QAction::triggered, this, &YaraViewMenu::onActionRemoveAll);
+    connect(actionOpenHelp, &QAction::triggered, this, &YaraViewMenu::onActionOpenHelp);
 
     addAction(actionAddNewMetadata);
     addAction(actionCopyName);
@@ -33,6 +36,8 @@ YaraViewMenu::YaraViewMenu(QWidget *parent, MainWindow *mainWindow)
     addSeparator();
     addAction(actionRemove);
     addAction(actionRemoveAll);
+    addSeparator();
+    addAction(actionOpenHelp);
 
     this->actionAddNewMetadata->setVisible(false);
     this->actionCopyName->setVisible(true);
@@ -145,4 +150,9 @@ void YaraViewMenu::onActionRemoveAll()
     Core()->cmd("yarasc");
     emit Core()->refreshCodeViews();
     emit Core()->flagsChanged();
+}
+
+void YaraViewMenu::onActionOpenHelp()
+{
+    YaraPlugin::openHelpDialog();
 }

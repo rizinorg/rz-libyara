@@ -24,6 +24,8 @@ public:
     QString getDescription() const override { return "Cutter YARA rules parser and generator."; }
     QString getVersion() const override { return "1.0"; }
 
+    static void openHelpDialog();
+
 private:
     void onActionAddYaraString();
     void onActionLoadYaraFile();
