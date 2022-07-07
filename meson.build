@@ -16,7 +16,10 @@ rz_yara_deps = [
 sys_yara_opt = get_option('use_sys_yara')
 yara_dep = disabler()
 if sys_yara_opt.enabled() or sys_yara_opt.auto()
-  yara_dep = dependency('yara', required: false)
+  yara_dep = dependency('libyara', required: false)
+  if not yara_dep.found()
+    yara_dep = cc.find_library('yara', required: sys_yara_opt.enabled())
+  endif
 endif
 if (sys_yara_opt.auto() and not yara_dep.found()) or sys_yara_opt.disabled()
   yara_proj = subproject('yara', default_options: ['default_library=static'])

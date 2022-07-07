@@ -84,7 +84,7 @@ endif
 
 openssl = dependency('openssl', required: false)
 if openssl.found()
-  yara_deps += dependency('openssl', required: true)
+  yara_deps += openssl
   yara_c_args += '-DHASH_MODULE=1'
   yara_c_args += '-DHAVE_LIBCRYPTO=1'
   yara_c_args += '-DHAVE_OPENSSL_ASN1_H=1'
