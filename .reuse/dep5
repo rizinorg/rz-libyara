@@ -19,7 +19,11 @@ Files: .gitmodules .gitignore .clang-format
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
-Files: meson_options.txt meson.build 
+Files: meson_options.txt meson.build
+Copyright: 2022 RizinOrg <info@rizin.re>
+License: LGPL-3.0-only
+
+Files: subprojects/yara.wrap subprojects/packagefiles/yara/meson.build
 Copyright: 2022 RizinOrg <info@rizin.re>
 License: LGPL-3.0-only
 
