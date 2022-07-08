@@ -390,17 +390,18 @@ static void yara_command_load_error(bool is_warning, const char *file, int line,
 }
 
 static void yara_add_match_flag(RzCore *core, const RzYaraMatch *match) {
-	char flagname[256];
 	const char *mem_loc = "va";
-	ut64 offset = rz_io_p2v(core->io, match->offset);
+	RzBinObject *bobj = rz_bin_cur_object(core->bin);
+	ut64 offset = bobj ? rz_bin_object_p2v(bobj, match->offset) : UT64_MAX;
 	if (offset == UT64_MAX) {
 		mem_loc = "pa";
 		offset = match->offset;
 	}
-	rz_strf(flagname, RZ_YARA_FLAG_PREFIX_MATCH "%s.%s_%s_%" PFMT64x, mem_loc, match->rule, match->string + 1, offset);
+	char *flagname = rz_str_newf(RZ_YARA_FLAG_PREFIX_MATCH "%s.%s_%s_%" PFMT64x, mem_loc, match->rule, match->string + 1, offset);
 	rz_flag_space_push(core->flags, RZ_YARA_FLAG_SPACE_MATCH);
 	rz_flag_set(core->flags, flagname, offset, match->size);
 	rz_flag_space_pop(core->flags);
+	free(flagname);
 }
 
 RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char **argv) {
