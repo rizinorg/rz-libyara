@@ -1009,7 +1009,9 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 RZ_IPI bool yara_plugin_fini(RzCore *core) {
 	yr_finalize();
 	ht_pp_free(yara_metadata);
-	return true;
+	RzCmd *cmd = core->rcmd;
+	RzCmdDesc* desc = rz_cmd_get_desc(cmd, "yara");
+	return rz_cmd_desc_remove(cmd, desc);
 }
 
 RzCorePlugin rz_core_plugin_yara = {
@@ -1032,6 +1034,5 @@ RZ_EXPORT RzLibStruct rizin_plugin = {
 	.type = RZ_LIB_TYPE_CORE,
 	.data = &rz_core_plugin_yara,
 	.version = RZ_VERSION,
-	.pkgname = "rz_yara"
 };
 #endif
