@@ -22,7 +22,13 @@ if sys_yara_opt.enabled() or sys_yara_opt.auto()
   endif
 endif
 if (sys_yara_opt.auto() and not yara_dep.found()) or sys_yara_opt.disabled()
-  yara_proj = subproject('yara', default_options: ['default_library=static'])
+  yara_options = ['default_library=static']
+  if get_option('enable_openssl')
+    yara_options += 'enable_openssl=true'
+  else
+    yara_options += 'enable_openssl=false'
+  endif
+  yara_proj = subproject('yara', default_options: yara_options)
   yara_dep = yara_proj.get_variable('yara_dep')
 endif
 

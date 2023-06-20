@@ -82,19 +82,21 @@ else
   yara_c_args += '-DUSE_NO_PROC'
 endif
 
-openssl = dependency('openssl', required: false)
-if openssl.found()
-  yara_deps += openssl
-  yara_c_args += '-DHASH_MODULE=1'
-  yara_c_args += '-DHAVE_LIBCRYPTO=1'
-  yara_c_args += '-DHAVE_OPENSSL_ASN1_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_BIO_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_CRYPTO_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_MD5_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_PKCS7_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_SHA_H=1'
-  yara_c_args += '-DHAVE_OPENSSL_X509_H=1'
-  yara_src += 'libyara/modules/hash/hash.c'
+if get_option('enable_openssl')
+  openssl = dependency('openssl', required: false)
+  if openssl.found()
+    yara_deps += openssl
+    yara_c_args += '-DHASH_MODULE=1'
+    yara_c_args += '-DHAVE_LIBCRYPTO=1'
+    yara_c_args += '-DHAVE_OPENSSL_ASN1_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_BIO_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_CRYPTO_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_MD5_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_PKCS7_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_SHA_H=1'
+    yara_c_args += '-DHAVE_OPENSSL_X509_H=1'
+    yara_src += 'libyara/modules/hash/hash.c'
+  endif
 endif
 
 yara_incs = [

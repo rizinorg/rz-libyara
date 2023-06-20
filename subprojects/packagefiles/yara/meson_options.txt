@@ -1,0 +1,1 @@
+option('enable_openssl', type: 'boolean', value: true, description: 'enables openssl support')

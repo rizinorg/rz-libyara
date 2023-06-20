@@ -1,2 +1,3 @@
 option('rizin_plugdir', type: 'string', value: '', description: 'rizin plugin install directory')
-option('use_sys_yara', type: 'feature', value: 'disabled')
+option('use_sys_yara', type: 'feature', value: 'disabled', description: 'uses the system library instead of the embedded one')
+option('enable_openssl', type: 'boolean', value: true, description: 'enables openssl support')
