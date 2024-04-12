@@ -59,10 +59,11 @@ static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
 		algo = YARA_KEYWORD_HASH_SHA256;
 	}
 
-	RzList *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
+	RzPVector *hashes = rz_bin_file_compute_hashes(cd->core->bin, bf, limit);
 	RzBinFileHash *h = NULL;
-	RzListIter *it = NULL;
-	rz_list_foreach (hashes, it, h) {
+	void **it = NULL;
+	rz_pvector_foreach (hashes, it) {
+		h = (RzBinFileHash *)*it;
 		if (yara_stricmp(algo, h->type)) {
 			continue;
 		}
@@ -74,7 +75,7 @@ static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
 		}
 		break;
 	}
-	rz_list_free(hashes);
+	rz_pvector_free(hashes);
 }
 
 static inline void add_metadata_timestamp(YaraCbData *cd, const char *key) {

@@ -8,10 +8,14 @@ yara_deps = [
 ]
 
 yara_c_args = [
- '-DMACHO_MODULE=1',
- '-DDEX_MODULE=1',
- '-DDOTNET_MODULE=1',
- '-DDEX_MODULE=1',
+  # required flags
+  '-DBUCKETS_128=1',
+  '-DCHECKSUM_1B=1',
+  # enabled
+  '-DMACHO_MODULE=1',
+  '-DDEX_MODULE=1',
+  '-DDOTNET_MODULE=1',
+  '-DDEX_MODULE=1',
 ]
 
 yara_src = [
@@ -33,15 +37,25 @@ yara_src = [
   'libyara/libyara.c',
   'libyara/mem.c',
   'libyara/modules.c',
+  'libyara/modules/console/console.c',
   #'libyara/modules/cuckoo/cuckoo.c',
+  #'libyara/modules/demo/demo.c',
   'libyara/modules/dex/dex.c',
   'libyara/modules/dotnet/dotnet.c',
   'libyara/modules/elf/elf.c',
   'libyara/modules/macho/macho.c',
   #'libyara/modules/magic/magic.c',
   'libyara/modules/math/math.c',
+  #'libyara/modules/pb_tests/pb_tests.c',
+  #'libyara/modules/pb_tests/pb_tests.pb-c.c',
+  'libyara/modules/pe/authenticode-parser/authenticode.c',
+  'libyara/modules/pe/authenticode-parser/certificate.c',
+  'libyara/modules/pe/authenticode-parser/countersignature.c',
+  'libyara/modules/pe/authenticode-parser/helper.c',
+  'libyara/modules/pe/authenticode-parser/structs.c',
   'libyara/modules/pe/pe.c',
   'libyara/modules/pe/pe_utils.c',
+  'libyara/modules/string/string.c',
   'libyara/modules/tests/tests.c',
   'libyara/modules/time/time.c',
   'libyara/notebook.c',
@@ -54,12 +68,16 @@ yara_src = [
   'libyara/rules.c',
   'libyara/scan.c',
   'libyara/scanner.c',
+  'libyara/simple_str.c',
   'libyara/sizedstr.c',
   'libyara/stack.c',
   'libyara/stopwatch.c',
   'libyara/stream.c',
   'libyara/strutils.c',
   'libyara/threading.c',
+  'libyara/tlshc/tlsh.c',
+  'libyara/tlshc/tlsh_impl.c',
+  'libyara/tlshc/tlsh_util.c',
 ]
 
 if host_machine.system() == 'openbsd'
@@ -106,6 +124,18 @@ yara_incs = [
 
 if cc.has_argument('-fPIC')
   add_project_arguments('-fPIC', language: ['c'])
+endif
+
+if cc.has_argument('-Wno-unused-function')
+  add_project_arguments('-Wno-unused-function', language: ['c'])
+endif
+
+if cc.has_argument('-Wno-unused-variable')
+  add_project_arguments('-Wno-unused-variable', language: ['c'])
+endif
+
+if cc.has_argument('-Wno-nonnull-compare')
+  add_project_arguments('-Wno-nonnull-compare', language: ['c'])
 endif
 
 yara_lib = static_library('yara', yara_src,
