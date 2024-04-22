@@ -48,11 +48,6 @@ yara_src = [
   'libyara/modules/math/math.c',
   #'libyara/modules/pb_tests/pb_tests.c',
   #'libyara/modules/pb_tests/pb_tests.pb-c.c',
-  'libyara/modules/pe/authenticode-parser/authenticode.c',
-  'libyara/modules/pe/authenticode-parser/certificate.c',
-  'libyara/modules/pe/authenticode-parser/countersignature.c',
-  'libyara/modules/pe/authenticode-parser/helper.c',
-  'libyara/modules/pe/authenticode-parser/structs.c',
   'libyara/modules/pe/pe.c',
   'libyara/modules/pe/pe_utils.c',
   'libyara/modules/string/string.c',
@@ -114,6 +109,11 @@ if get_option('enable_openssl')
     yara_c_args += '-DHAVE_OPENSSL_SHA_H=1'
     yara_c_args += '-DHAVE_OPENSSL_X509_H=1'
     yara_src += 'libyara/modules/hash/hash.c'
+    yara_src += 'libyara/modules/pe/authenticode-parser/authenticode.c',
+    yara_src += 'libyara/modules/pe/authenticode-parser/certificate.c',
+    yara_src += 'libyara/modules/pe/authenticode-parser/countersignature.c',
+    yara_src += 'libyara/modules/pe/authenticode-parser/helper.c',
+    yara_src += 'libyara/modules/pe/authenticode-parser/structs.c',
   endif
 endif
 
