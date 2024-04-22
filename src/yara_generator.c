@@ -34,17 +34,12 @@ typedef struct yara_cb_data_t {
 	const char *date_format;
 } YaraCbData;
 
-static void yara_metadata_free_kv(HtPPKv *kv) {
-	free(kv->key);
-	free(kv->value);
-}
-
 RZ_API RZ_OWN RzYaraMeta *rz_yara_metadata_new() {
-	return ht_pp_new((HtPPDupValue)strdup, (HtPPKvFreeFunc)yara_metadata_free_kv, (HtPPCalcSizeV)strlen);
+	return ht_sp_new(HT_STR_DUP, NULL, free);
 }
 
 RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata) {
-	ht_pp_free(metadata);
+	ht_sp_free(metadata);
 }
 
 static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
@@ -305,7 +300,7 @@ RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE
 
 	if (metadata && metadata->count > 0) {
 		rz_strbuf_append(sb, "\tmeta:\n");
-		ht_pp_foreach(metadata, (HtPPForeachCallback)add_metadata, &cd);
+		ht_sp_foreach(metadata, (HtSPForeachCallback)add_metadata, &cd);
 		rz_strbuf_append(sb, "\n");
 	}
 

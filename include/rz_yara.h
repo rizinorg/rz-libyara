@@ -28,7 +28,7 @@ extern "C" {
 #define RZ_YARA_FLAG_PREFIX_ASM_M      RZ_YARA_FLAG_SPACE_RULE_ASM_M "."
 #define RZ_YARA_FLAG_PREFIX_ASM_U      RZ_YARA_FLAG_SPACE_RULE_ASM_U "."
 
-typedef HtPP /*<const char*, const char*>*/ RzYaraMeta;
+typedef HtSP /*<const char*, const char*>*/ RzYaraMeta;
 typedef struct rz_yara_match_t {
 	char *rule;
 	char *string;

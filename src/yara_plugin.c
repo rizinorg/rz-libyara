@@ -17,7 +17,7 @@
 #define SETPREFI(x, y, z) SETDESC(rz_config_set_i(cfg, x, y), z)
 #define SETPREFB(x, y, z) SETDESC(rz_config_set_b(cfg, x, y), z)
 
-static HtPP *yara_metadata = NULL;
+static HtSP *yara_metadata = NULL;
 
 static const RzCmdDescDetailEntry yara_command_grp_complete_create_example[] = {
 	{ .text = "yarama ", .arg_str = "author \"John Doe\"", .comment = "Adds metadata key 'author' and its value 'John Doe'" },
@@ -873,19 +873,19 @@ RZ_IPI RzCmdStatus yara_command_metadata_list_handler(RzCore *core, int argc, co
 	RzCmdStatus res = RZ_CMD_STATUS_OK;
 	switch (state->mode) {
 	case RZ_OUTPUT_MODE_STANDARD:
-		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_standard, NULL);
+		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_standard, NULL);
 		break;
 	case RZ_OUTPUT_MODE_QUIET:
-		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_quiet, NULL);
+		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_quiet, NULL);
 		break;
 	case RZ_OUTPUT_MODE_JSON:
 		pj_o(state->d.pj);
-		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_json, state->d.pj);
+		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_json, state->d.pj);
 		pj_end(state->d.pj);
 		break;
 	case RZ_OUTPUT_MODE_TABLE:
 		rz_table_set_columnsf(state->d.t, "ss", "key", "value", NULL);
-		ht_pp_foreach(yara_metadata, (HtPPForeachCallback)yara_metadata_list_table, state->d.t);
+		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_table, state->d.t);
 		break;
 	default:
 		rz_warn_if_reached();
@@ -909,12 +909,12 @@ RZ_IPI RzCmdStatus yara_command_metadata_add_handler(RzCore *core, int argc, con
 	} else {
 		value = argv[2];
 	}
-	ht_pp_update(yara_metadata, argv[1], (void *)value);
+	ht_sp_update(yara_metadata, argv[1], (void *)value);
 	return RZ_CMD_STATUS_OK;
 }
 
 RZ_IPI RzCmdStatus yara_command_metadata_remove_handler(RzCore *core, int argc, const char **argv) {
-	ht_pp_delete(yara_metadata, argv[1]);
+	ht_sp_delete(yara_metadata, argv[1]);
 	return RZ_CMD_STATUS_OK;
 }
 
@@ -1008,7 +1008,7 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 
 RZ_IPI bool yara_plugin_fini(RzCore *core) {
 	yr_finalize();
-	ht_pp_free(yara_metadata);
+	ht_sp_free(yara_metadata);
 	RzCmd *cmd = core->rcmd;
 	RzCmdDesc* desc = rz_cmd_get_desc(cmd, "yara");
 	return rz_cmd_desc_remove(cmd, desc);

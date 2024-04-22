@@ -6,7 +6,7 @@
 #include "ui_YaraAddDialog.h"
 
 #include <QIntValidator>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 #include "core/Cutter.h"
 
 YaraAddDialog::YaraAddDialog(RVA offset, QWidget *parent)
@@ -32,7 +32,8 @@ YaraAddDialog::YaraAddDialog(RVA offset, QWidget *parent)
         }
     }
 
-    auto nameValidator = new QRegExpValidator(QRegExp("[A-Za-z0-9_]+"), this);
+    QRegularExpression rx("[A-Za-z0-9_]+");
+    auto nameValidator = new QRegularExpressionValidator(rx, this);
     ui->nameEdit->setValidator(nameValidator);
 
     auto size_validator = new QIntValidator(ui->sizeEdit);
