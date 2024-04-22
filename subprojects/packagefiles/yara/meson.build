@@ -109,11 +109,11 @@ if get_option('enable_openssl')
     yara_c_args += '-DHAVE_OPENSSL_SHA_H=1'
     yara_c_args += '-DHAVE_OPENSSL_X509_H=1'
     yara_src += 'libyara/modules/hash/hash.c'
-    yara_src += 'libyara/modules/pe/authenticode-parser/authenticode.c',
-    yara_src += 'libyara/modules/pe/authenticode-parser/certificate.c',
-    yara_src += 'libyara/modules/pe/authenticode-parser/countersignature.c',
-    yara_src += 'libyara/modules/pe/authenticode-parser/helper.c',
-    yara_src += 'libyara/modules/pe/authenticode-parser/structs.c',
+    yara_src += 'libyara/modules/pe/authenticode-parser/authenticode.c'
+    yara_src += 'libyara/modules/pe/authenticode-parser/certificate.c'
+    yara_src += 'libyara/modules/pe/authenticode-parser/countersignature.c'
+    yara_src += 'libyara/modules/pe/authenticode-parser/helper.c'
+    yara_src += 'libyara/modules/pe/authenticode-parser/structs.c'
   endif
 endif
 
