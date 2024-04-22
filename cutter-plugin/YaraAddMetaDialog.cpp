@@ -7,7 +7,7 @@
 #include <QToolTip>
 #include <QStringList>
 #include <QIntValidator>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 #include "core/Cutter.h"
 
 QStringList YaraAddMetaDialog::FileKeywords = {
@@ -28,7 +28,8 @@ YaraAddMetaDialog::YaraAddMetaDialog(QWidget *parent)
     ui->setupUi(this);
     setWindowFlags(windowFlags() & (~Qt::WindowContextHelpButtonHint));
 
-    auto nameValidator = new QRegExpValidator(QRegExp("^[A-Za-z0-9_]+$"), this);
+    QRegularExpression rx("^[A-Za-z0-9_]+$");
+    auto nameValidator = new QRegularExpressionValidator(rx, this);
     ui->nameEdit->setValidator(nameValidator);
     ui->nameEdit->setMaxLength(128);
     ui->valueEdit->setMaxLength(128);
