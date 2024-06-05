@@ -24,7 +24,7 @@ YaraAddDialog::YaraAddDialog(RVA offset, QWidget *parent)
         QString name = QString(flag->name);
         if (name.startsWith("str.")) {
             name = name.replace("str.", "");
-            name = name.replace(QRegExp("[^A-Za-z0-9_]+"), "");
+            name = name.replace(QRegularExpression("[^A-Za-z0-9_]+"), "");
             if (!name.isEmpty()) {
                 ui->nameEdit->setText(name);
             }
