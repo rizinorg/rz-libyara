@@ -15,7 +15,6 @@ yara_c_args = [
   '-DMACHO_MODULE=1',
   '-DDEX_MODULE=1',
   '-DDOTNET_MODULE=1',
-  '-DDEX_MODULE=1',
 ]
 
 yara_src = [
@@ -100,6 +99,7 @@ if get_option('enable_openssl')
   if openssl.found()
     yara_deps += openssl
     yara_c_args += '-DHASH_MODULE=1'
+    yara_c_args += '-DAUTHENTICODE_MODULE=1'
     yara_c_args += '-DHAVE_LIBCRYPTO=1'
     yara_c_args += '-DHAVE_OPENSSL_ASN1_H=1'
     yara_c_args += '-DHAVE_OPENSSL_BIO_H=1'

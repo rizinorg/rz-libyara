@@ -1,5 +1,5 @@
 [wrap-git]
 url = https://github.com/VirusTotal/yara
-revision = 5317a2b3499f1e3a583377dcc1b8be84725034ac
+revision = a7f351aab0fbad6713e9091b8e012cc7e870ec76
 patch_directory = yara
 depth = 1
