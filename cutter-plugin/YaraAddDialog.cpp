@@ -19,7 +19,8 @@ YaraAddDialog::YaraAddDialog(RVA offset, QWidget *parent)
     ui->sizeEdit->setText("1");
     ui->nameEdit->setText("placeholder");
 
-    RzFlagItem *flag = rz_flag_get_i(Core()->core()->flags, offset);
+    RzCoreLocked core(Core());
+    RzFlagItem *flag = rz_flag_get_i(core->flags, offset);
     if (flag) {
         QString name = QString(flag->name);
         if (name.startsWith("str.")) {
