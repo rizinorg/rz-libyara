@@ -298,7 +298,7 @@ RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE
 	}
 	rz_strbuf_append(sb, "\n{\n");
 
-	if (metadata && metadata->count > 0) {
+	if (metadata && metadata->size > 0) {
 		rz_strbuf_append(sb, "\tmeta:\n");
 		ht_sp_foreach(metadata, (HtSPForeachCallback)add_metadata, &cd);
 		rz_strbuf_append(sb, "\n");
