@@ -39,9 +39,9 @@ QVariant YaraModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         switch (index.column()) {
         case OffsetColumn:
-            return RzAddressString(desc.offset);
+            return rzAddressString(desc.offset);
         case SizeColumn:
-            return RzSizeString(desc.size);
+            return rzSizeString(desc.size);
         case NameColumn:
             return desc.name;
         default:
