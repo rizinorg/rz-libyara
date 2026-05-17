@@ -41,7 +41,7 @@ YaraAddDialog::YaraAddDialog(RVA offset, QWidget *parent)
     size_validator->setBottom(1);
     ui->sizeEdit->setValidator(size_validator);
 
-    ui->labelAction->setText(tr("Add Yara string at %1").arg(RzAddressString(flagOffset)));
+    ui->labelAction->setText(tr("Add Yara string at %1").arg(rzAddressString(flagOffset)));
 
     ui->typeSelector->addItem(tr("String"), "yarasas");
     ui->typeSelector->addItem(tr("Bytes"), "yarasab");
@@ -63,8 +63,8 @@ void YaraAddDialog::buttonBoxAccepted()
     QString command = ui->typeSelector->currentData().toString();
 
     if (!name.isEmpty() && size > 0) {
-        Core()->cmd(command + " " + name + " " + RzSizeString(size) + " @ "
-                    + RzAddressString(flagOffset));
+        Core()->cmd(command + " " + name + " " + rzSizeString(size) + " @ "
+                    + rzAddressString(flagOffset));
     }
     close();
     this->setResult(QDialog::Accepted);
