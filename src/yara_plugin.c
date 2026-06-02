@@ -7,6 +7,8 @@
  * Adds core plugin to rizin to handle yara rules
  */
 
+#define LIBYARA_NAME "rz_yara"
+
 #undef RZ_API
 #define RZ_API static
 #undef RZ_IPI
@@ -16,8 +18,6 @@
 #define SETPREFS(x, y, z) SETDESC(rz_config_set(cfg, x, y), z)
 #define SETPREFI(x, y, z) SETDESC(rz_config_set_i(cfg, x, y), z)
 #define SETPREFB(x, y, z) SETDESC(rz_config_set_b(cfg, x, y), z)
-
-static HtSP *yara_metadata = NULL;
 
 static const RzCmdDescDetailEntry yara_command_grp_complete_create_example[] = {
 	{ .text = "yarama ", .arg_str = "author \"John Doe\"", .comment = "Adds metadata key 'author' and its value 'John Doe'" },
@@ -552,7 +552,17 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	return list ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
 }
 
+static inline RzYaraMeta *get_yara_metadata(RzCore *core) {
+	bool found = false;
+	RzYaraMeta * meta = (RzYaraMeta *)ht_sp_find(core->plugin_contexts, LIBYARA_NAME, &found);
+	if (!found) {
+		return NULL;
+	}
+	return meta;
+}
+
 RZ_IPI RzCmdStatus yara_command_create_handler(RzCore *core, int argc, const char **argv) {
+	RzYaraMeta *yara_metadata = get_yara_metadata(core);
 	char *rule = rz_yara_create_rule_from_bytes(core, yara_metadata, argv[1]);
 	if (!rule) {
 		return RZ_CMD_STATUS_ERROR;
@@ -870,22 +880,24 @@ static bool yara_metadata_list_table(RzTable *table, const char *k, const char *
 }
 
 RZ_IPI RzCmdStatus yara_command_metadata_list_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
+	RzYaraMeta *yara_metadata = get_yara_metadata(core);
+
 	RzCmdStatus res = RZ_CMD_STATUS_OK;
 	switch (state->mode) {
 	case RZ_OUTPUT_MODE_STANDARD:
-		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_standard, NULL);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_standard, NULL);
 		break;
 	case RZ_OUTPUT_MODE_QUIET:
-		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_quiet, NULL);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_quiet, NULL);
 		break;
 	case RZ_OUTPUT_MODE_JSON:
 		pj_o(state->d.pj);
-		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_json, state->d.pj);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_json, state->d.pj);
 		pj_end(state->d.pj);
 		break;
 	case RZ_OUTPUT_MODE_TABLE:
 		rz_table_set_columnsf(state->d.t, "ss", "key", "value", NULL);
-		ht_sp_foreach(yara_metadata, (HtSPForeachCallback)yara_metadata_list_table, state->d.t);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_table, state->d.t);
 		break;
 	default:
 		rz_warn_if_reached();
@@ -896,6 +908,8 @@ RZ_IPI RzCmdStatus yara_command_metadata_list_handler(RzCore *core, int argc, co
 }
 
 RZ_IPI RzCmdStatus yara_command_metadata_add_handler(RzCore *core, int argc, const char **argv) {
+	RzYaraMeta *yara_metadata = get_yara_metadata(core);
+
 	const char *value = NULL;
 	if (argc != 3) {
 		if (!is_keyword_hash(argv[1]) && !is_keyword_date(argv[1])) {
@@ -909,17 +923,19 @@ RZ_IPI RzCmdStatus yara_command_metadata_add_handler(RzCore *core, int argc, con
 	} else {
 		value = argv[2];
 	}
-	ht_sp_update(yara_metadata, argv[1], (void *)value);
+	ht_ss_update(yara_metadata, argv[1], (void *)value);
 	return RZ_CMD_STATUS_OK;
 }
 
 RZ_IPI RzCmdStatus yara_command_metadata_remove_handler(RzCore *core, int argc, const char **argv) {
-	ht_sp_delete(yara_metadata, argv[1]);
+	RzYaraMeta *yara_metadata = get_yara_metadata(core);
+
+	ht_ss_delete(yara_metadata, argv[1]);
 	return RZ_CMD_STATUS_OK;
 }
 
-RZ_IPI bool yara_plugin_init(RzCore *core) {
-	yara_metadata = rz_yara_metadata_new();
+RZ_IPI bool yara_plugin_init(RzCore *core, RZ_OUT void **user) {
+	RzYaraMeta *yara_metadata = rz_yara_metadata_new();
 	if (!yara_metadata) {
 		YARA_ERROR("cannot allocate metadata hashmap\n");
 		return false;
@@ -1003,19 +1019,22 @@ RZ_IPI bool yara_plugin_init(RzCore *core) {
 		return false;
 	}
 
+	*user = yara_metadata;
 	return true;
 }
 
-RZ_IPI bool yara_plugin_fini(RzCore *core) {
+RZ_IPI bool yara_plugin_fini(RzCore *core, void *user) {
+	RzYaraMeta *yara_metadata = (RzYaraMeta *)user;
+
 	yr_finalize();
-	ht_sp_free(yara_metadata);
+	ht_ss_free(yara_metadata);
 	RzCmd *cmd = core->rcmd;
 	RzCmdDesc* desc = rz_cmd_get_desc(cmd, "yara");
 	return rz_cmd_desc_remove(cmd, desc);
 }
 
 RzCorePlugin rz_core_plugin_yara = {
-	.name = "rz_yara",
+	.name = LIBYARA_NAME,
 	.author = "deroad",
 	.desc = "Rizin YARA rules parser and generator.",
 	.license = "LGPL-3.0",

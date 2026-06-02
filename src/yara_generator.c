@@ -35,11 +35,11 @@ typedef struct yara_cb_data_t {
 } YaraCbData;
 
 RZ_API RZ_OWN RzYaraMeta *rz_yara_metadata_new() {
-	return ht_sp_new(HT_STR_DUP, NULL, free);
+	return ht_ss_new(HT_STR_DUP, HT_STR_DUP);
 }
 
 RZ_API void rz_yara_metadata_free(RZ_NULLABLE RzYaraMeta *metadata) {
-	ht_sp_free(metadata);
+	ht_ss_free(metadata);
 }
 
 static inline void add_metadata_file_hash(YaraCbData *cd, const char *key) {
@@ -300,7 +300,7 @@ RZ_API char *rz_yara_create_rule_from_bytes(RZ_NONNULL RzCore *core, RZ_NULLABLE
 
 	if (metadata && metadata->size > 0) {
 		rz_strbuf_append(sb, "\tmeta:\n");
-		ht_sp_foreach(metadata, (HtSPForeachCallback)add_metadata, &cd);
+		ht_ss_foreach(metadata, (HtSSForeachCallback)add_metadata, &cd);
 		rz_strbuf_append(sb, "\n");
 	}
 
