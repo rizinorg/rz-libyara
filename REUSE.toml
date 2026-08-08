@@ -1,0 +1,46 @@
+version = 1
+SPDX-PackageName = "Rizin"
+SPDX-PackageSupplier = "RizinOrg <info@rizin.re>"
+SPDX-PackageDownloadLocation = "https://github.com/rizinorg/rizin"
+
+[[annotations]]
+path = ".github/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = "cutter-plugin/**.ui"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["cutter-plugin/CMakeLists.txt", "cutter-plugin/.clang-format", "cutter-plugin/cmake/FindCutter.cmake"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = [".gitmodules", ".gitignore", ".clang-format"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["meson_options.txt", "meson.build"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["subprojects/yara.wrap", "subprojects/packagefiles/yara/meson.build"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["**.md", ".images/**.png"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2022 RizinOrg <info@rizin.re>"
+SPDX-License-Identifier = "LGPL-3.0-only"
