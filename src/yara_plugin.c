@@ -443,7 +443,7 @@ RZ_IPI RzCmdStatus yara_command_load_handler(RzCore *core, int argc, const char 
 	rz_list_foreach (matches, it, ym) {
 		yara_add_match_flag(core, ym);
 	}
-	rz_cons_printf("%u matches (check yaraM)\n", rz_list_length(matches));
+	rz_cons_printf(core->cons, "%u matches (check yaraM)\n", rz_list_length(matches));
 	rz_list_free(matches);
 
 	return matches ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -546,7 +546,7 @@ RZ_IPI RzCmdStatus yara_command_folder_handler(RzCore *core, int argc, const cha
 	rz_list_foreach (list, it, ym) {
 		yara_add_match_flag(core, ym);
 	}
-	rz_cons_printf("%u matches (check yaraM)\n", rz_list_length(list));
+	rz_cons_printf(core->cons, "%u matches (check yaraM)\n", rz_list_length(list));
 	rz_list_free(list);
 
 	return list ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
@@ -568,20 +568,20 @@ RZ_IPI RzCmdStatus yara_command_create_handler(RzCore *core, int argc, const cha
 		return RZ_CMD_STATUS_ERROR;
 	}
 
-	rz_cons_printf("%s", rule);
+	rz_cons_printf(core->cons, "%s", rule);
 	free(rule);
 	return RZ_CMD_STATUS_OK;
 }
 
-static bool yara_flag_list_standard(RzFlagItem *fi, void *unused) {
-	(void)unused;
-	rz_cons_printf("0x%" PFMT64x " 0x%" PFMT64x " %s\n", fi->offset, fi->size, fi->name);
+static bool yara_flag_list_standard(RzFlagItem *fi, void *c) {
+	RzCons *cons = (RzCons *)c;
+	rz_cons_printf(cons, "0x%" PFMT64x " 0x%" PFMT64x " %s\n", fi->offset, fi->size, fi->name);
 	return true;
 }
 
-static bool yara_flag_list_quiet(RzFlagItem *fi, void *unused) {
-	(void)unused;
-	rz_cons_printf("%s\n", fi->name);
+static bool yara_flag_list_quiet(RzFlagItem *fi, void *c) {
+	RzCons *cons = (RzCons *)c;
+	rz_cons_printf(cons, "%s\n", fi->name);
 	return true;
 }
 
@@ -603,10 +603,10 @@ RZ_IPI RzCmdStatus yara_command_flag_list_handler(RzCore *core, int argc, const 
 	RzCmdStatus res = RZ_CMD_STATUS_OK;
 	switch (state->mode) {
 	case RZ_OUTPUT_MODE_STANDARD:
-		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_standard, NULL);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_standard, core->cons);
 		break;
 	case RZ_OUTPUT_MODE_QUIET:
-		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_quiet, NULL);
+		rz_flag_foreach_glob(core->flags, RZ_YARA_FLAG_SPACE_RULE, (RzFlagItemCb)yara_flag_list_quiet, core->cons);
 		break;
 	case RZ_OUTPUT_MODE_JSON:
 		pj_a(state->d.pj);
@@ -842,19 +842,19 @@ RZ_IPI RzCmdStatus yara_command_flag_add_unmasked_asm_handler(RzCore *core, int 
 	return RZ_CMD_STATUS_OK;
 }
 
-static bool yara_metadata_list_standard(void *unused, const char *k, const char *v) {
-	(void)unused;
+static bool yara_metadata_list_standard(void *c, const char *k, const char *v) {
+	RzCons *cons = (RzCons *)c;
 	if (RZ_STR_ISEMPTY(v) && (is_keyword_hash(k) || is_keyword_date(k))) {
-		rz_cons_printf("%s = <auto filled>\n", k);
+		rz_cons_printf(cons, "%s = <auto filled>\n", k);
 	} else {
-		rz_cons_printf("%s = %s\n", k, v);
+		rz_cons_printf(cons, "%s = %s\n", k, v);
 	}
 	return true;
 }
 
-static bool yara_metadata_list_quiet(void *unused, const char *k, const char *v) {
-	(void)unused;
-	rz_cons_printf("%s %s\n", k, v);
+static bool yara_metadata_list_quiet(void *c, const char *k, const char *v) {
+	RzCons *cons = (RzCons *)c;
+	rz_cons_printf(cons, "%s %s\n", k, v);
 	return true;
 }
 
@@ -885,10 +885,10 @@ RZ_IPI RzCmdStatus yara_command_metadata_list_handler(RzCore *core, int argc, co
 	RzCmdStatus res = RZ_CMD_STATUS_OK;
 	switch (state->mode) {
 	case RZ_OUTPUT_MODE_STANDARD:
-		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_standard, NULL);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_standard, core->cons);
 		break;
 	case RZ_OUTPUT_MODE_QUIET:
-		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_quiet, NULL);
+		ht_ss_foreach(yara_metadata, (HtSSForeachCallback)yara_metadata_list_quiet, core->cons);
 		break;
 	case RZ_OUTPUT_MODE_JSON:
 		pj_o(state->d.pj);
